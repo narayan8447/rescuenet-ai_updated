@@ -1,0 +1,7 @@
+# Combined requirements - install this single file to get everything
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+streamlit==1.40.2
+requests==2.32.3
+pandas==2.2.3
