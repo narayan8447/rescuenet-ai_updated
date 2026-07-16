@@ -34,6 +34,9 @@ rescuenet-ai/
 │   ├── data/
 │   │   └── simulated_data.py        # Hospitals, shelters, resources, volunteers, POIs
 │   └── agents/
+│       ├── graph_state.py           # LangGraph State Definition
+│       ├── stubs.py                 # LangGraph Node Wrappers
+│       ├── supervisor_v2.py         # LangGraph Supervisor Agent
 │       ├── event_detection.py       # Agent 1
 │       ├── damage_assessment.py     # Agent 2
 │       ├── rescue_prioritization.py # Agent 3
@@ -46,7 +49,7 @@ rescuenet-ai/
 │       ├── communication.py         # Agent 10
 │       ├── situation_reporting.py   # Agent 11
 │       ├── prediction.py            # Agent 12
-│       └── orchestrator.py          # Coordinates all 12 agents in sequence
+│       └── orchestrator.py          # Legacy sequential orchestrator
 ├── frontend/
 │   ├── app.py                       # Streamlit command dashboard
 │   └── requirements.txt
