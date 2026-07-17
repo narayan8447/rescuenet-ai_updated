@@ -7,6 +7,9 @@ Run with:
 Exposes the multi-agent pipeline as a REST API for the Streamlit dashboard
 (or any other client / Postman / curl) to consume.
 """
+import faulthandler
+faulthandler.enable()
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
