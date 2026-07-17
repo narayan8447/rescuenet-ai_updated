@@ -16,6 +16,7 @@ from secure import Secure
 from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 from fastapi_cache.backends.redis import RedisBackend
+from fastapi_cache.backends.inmemory import InMemoryBackend
 from redis import asyncio as aioredis
 import os
 
@@ -51,9 +52,12 @@ async def set_secure_headers(request, call_next):
 @app.on_event("startup")
 def startup():
     database.init_db()
-    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    redis_client = aioredis.from_url(redis_url)
-    FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
+    if os.environ.get("USE_FAKE_REDIS") == "true":
+        FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
+    else:
+        redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        redis_client = aioredis.from_url(redis_url)
+        FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
     
     # Auto-ingest RAG data for zero-dependency deployments
     if not os.environ.get("QDRANT_URL") and not os.path.exists("qdrant_data"):
