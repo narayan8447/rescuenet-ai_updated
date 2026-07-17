@@ -5,7 +5,7 @@ streamlit==1.40.2
 requests==2.32.3
 pandas==2.2.3
 langgraph==0.2.61
-langchain-core==0.3.30
+langchain-core==0.3.33
 tenacity>=8.2.3
 pytest>=8.0.0
 pydantic-settings>=2.7.0
