@@ -46,10 +46,10 @@ class HFHubEmbedder:
             if response.status_code == 200:
                 return np.array(response.json())
             else:
-                logger.warning("hf_embeddings_api_error", status=response.status_code, text=response.text)
+                logger.error("hf_embeddings_api_error", status=response.status_code, text=response.text)
         except Exception as e:
-            logger.warning("hf_embeddings_failed", error=str(e))
-        logger.warning("using_fallback_dummy_embeddings")
+            logger.error("hf_embeddings_failed", error=str(e))
+        logger.info("using_fallback_dummy_embeddings")
         return np.zeros((len(texts), 384))
 
 class HFHubReranker:
@@ -83,7 +83,7 @@ class HFHubReranker:
                             scores.append(0.5)
                     return scores
         except Exception as e:
-            logger.warning("hf_reranker_failed", error=str(e))
+            logger.error("hf_reranker_failed", error=str(e))
         scores = []
         for query, text in pairs:
             q_words = set(query.lower().split())
@@ -106,7 +106,7 @@ def get_embedder():
                 logger.info("loading_embedding_model", model="all-MiniLM-L6-v2")
                 _embedder = SentenceTransformer("all-MiniLM-L6-v2")
             except Exception as e:
-                logger.warning("local_embedding_loading_failed", error=str(e))
+                logger.error("local_embedding_loading_failed", error=str(e))
                 _embedder = HFHubEmbedder()
         else:
             logger.info("loading_embedding_model_api")
@@ -121,7 +121,7 @@ def get_reranker():
                 logger.info("loading_cross_encoder", model="cross-encoder/ms-marco-MiniLM-L-6-v2")
                 _reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
             except Exception as e:
-                logger.warning("local_reranker_loading_failed", error=str(e))
+                logger.error("local_reranker_loading_failed", error=str(e))
                 _reranker = HFHubReranker()
         else:
             logger.info("loading_cross_encoder_api")
