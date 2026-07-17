@@ -45,7 +45,7 @@ def route_supervisor(state: GraphState) -> Union[str, List[str]]:
         else:
             # If Critic rejected, loop back to resource allocation
             if "rejected" in state.execution_history[-1]["summary"].lower():
-                logger.warning("Reflection loop triggered by PlanCritic")
+                logger.info("Reflection loop triggered by PlanCritic")
                 return "resource_allocation"
 
     # Dependent Nodes
