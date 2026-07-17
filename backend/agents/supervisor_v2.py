@@ -133,8 +133,14 @@ def build_supervisor_graph():
     )
 
     # Initialize checkpointer for Human-In-The-Loop
-    from backend.core.memory import RedisSaver, memory_manager
-    memory = RedisSaver(memory_manager.client)
+    import os
+    if os.environ.get("USE_FAKE_REDIS", "false").lower() == "true":
+        # Use pure-Python MemorySaver on Render to avoid ormsgpack segfaults
+        from langgraph.checkpoint.memory import MemorySaver
+        memory = MemorySaver()
+    else:
+        from backend.core.memory import RedisSaver, memory_manager
+        memory = RedisSaver(memory_manager.client)
 
     # Compile the graph with interrupts
     return builder.compile(
