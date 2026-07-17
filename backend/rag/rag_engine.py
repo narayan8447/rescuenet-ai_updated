@@ -145,19 +145,23 @@ def get_qdrant():
         url = os.environ.get("QDRANT_URL")
         api_key = os.environ.get("QDRANT_API_KEY")
         if url:
-            _qdrant_client = QdrantClient(url=url, api_key=api_key)
+            try:
+                _qdrant_client = QdrantClient(url=url, api_key=api_key)
+                # Ensure collection exists
+                try:
+                    _qdrant_client.get_collection("rescuenet_knowledge")
+                except Exception:
+                    _qdrant_client.create_collection(
+                        collection_name="rescuenet_knowledge",
+                        vectors_config=VectorParams(size=384, distance=Distance.COSINE),
+                    )
+                    logger.info("created_qdrant_collection", name="rescuenet_knowledge")
+            except Exception as e:
+                logger.error("qdrant_init_failed", error=str(e))
+                _qdrant_client = None
         else:
-            # Fallback to local file memory for Render/Zero-Dependency deployments
-            _qdrant_client = QdrantClient(path="qdrant_data")
-        # Ensure collection exists
-        try:
-            _qdrant_client.get_collection("rescuenet_knowledge")
-        except Exception:
-            _qdrant_client.create_collection(
-                collection_name="rescuenet_knowledge",
-                vectors_config=VectorParams(size=384, distance=Distance.COSINE),
-            )
-            logger.info("created_qdrant_collection", name="rescuenet_knowledge")
+            logger.info("QDRANT_URL not set; running in pure-Python BM25 mode.")
+            _qdrant_client = None
             
     return _qdrant_client
 
@@ -203,25 +207,31 @@ class RAGEngine:
             tokenized_corpus = [tokenize(doc["text"]) for doc in self.corpus]
             self.bm25 = BM25Okapi(tokenized_corpus)
             
-        texts = [doc["text"] for doc in documents]
-        embeddings = embedder.encode(texts).tolist()
-        
-        points = []
-        for idx, (doc, emb) in enumerate(zip(documents, embeddings)):
-            point_id = str(uuid.uuid4())
-            points.append(
-                PointStruct(
-                    id=point_id,
-                    vector=emb,
-                    payload={"text": doc["text"], **doc.get("metadata", {})}
+        if client is not None:
+            try:
+                texts = [doc["text"] for doc in documents]
+                embeddings = embedder.encode(texts).tolist()
+                
+                points = []
+                for idx, (doc, emb) in enumerate(zip(documents, embeddings)):
+                    point_id = str(uuid.uuid4())
+                    points.append(
+                        PointStruct(
+                            id=point_id,
+                            vector=emb,
+                            payload={"text": doc["text"], **doc.get("metadata", {})}
+                        )
+                    )
+                    
+                client.upsert(
+                    collection_name=self.collection_name,
+                    points=points
                 )
-            )
-            
-        client.upsert(
-            collection_name=self.collection_name,
-            points=points
-        )
-        logger.info("documents_ingested", count=len(points))
+                logger.info("documents_ingested", count=len(points))
+            except Exception as e:
+                logger.error("qdrant_upsert_failed_using_bm25_only", error=str(e))
+        else:
+            logger.info("documents_ingested_bm25_only", count=len(documents))
 
     def retrieve(self, query_obj: RAGQuery) -> RAGResponse:
         start_time = time.time()
@@ -239,25 +249,32 @@ class RAGEngine:
             response.processing_time_ms = (time.time() - start_time) * 1000
             return response
             
-        # 2. Embed Query
-        query_vector = embedder.encode(query_obj.query).tolist()
-        
-        # 3. Build Metadata Filter
-        must_conditions = []
-        if query_obj.disaster_type:
-            must_conditions.append(FieldCondition(key="disaster_type", match=MatchValue(value=query_obj.disaster_type)))
-        if query_obj.agency:
-            must_conditions.append(FieldCondition(key="agency", match=MatchValue(value=query_obj.agency)))
-            
-        query_filter = Filter(must=must_conditions) if must_conditions else None
-        
         # 4. Dense Retrieval
-        search_result = client.query_points(
-            collection_name=self.collection_name,
-            query=query_vector,
-            query_filter=query_filter,
-            limit=query_obj.top_k * 2
-        ).points
+        search_result = []
+        if client is not None:
+            try:
+                # 2. Embed Query
+                query_vector = embedder.encode(query_obj.query).tolist()
+                
+                # 3. Build Metadata Filter
+                must_conditions = []
+                if query_obj.disaster_type:
+                    must_conditions.append(FieldCondition(key="disaster_type", match=MatchValue(value=query_obj.disaster_type)))
+                if query_obj.agency:
+                    must_conditions.append(FieldCondition(key="agency", match=MatchValue(value=query_obj.agency)))
+                    
+                query_filter = Filter(must=must_conditions) if must_conditions else None
+                
+                search_result = client.query_points(
+                    collection_name=self.collection_name,
+                    query=query_vector,
+                    query_filter=query_filter,
+                    limit=query_obj.top_k * 2
+                ).points
+            except Exception as e:
+                logger.error("qdrant_dense_retrieval_failed_using_bm25_only", error=str(e))
+        else:
+            logger.info("qdrant_bypassed_using_bm25_only")
         
         # 5. Sparse Retrieval (BM25)
         sparse_hits = []
