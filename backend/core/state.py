@@ -3,6 +3,13 @@ from pydantic import BaseModel, Field
 import uuid
 import operator
 
+def _merge_dicts(left: Dict[str, int], right: Dict[str, int]) -> Dict[str, int]:
+    """Merge two dicts, keeping the max value for each key."""
+    merged = left.copy()
+    for k, v in right.items():
+        merged[k] = max(merged.get(k, 0), v)
+    return merged
+
 class GraphState(BaseModel):
     """
     The universal state object passed between all LangGraph nodes.
@@ -13,10 +20,10 @@ class GraphState(BaseModel):
     supervisor_plan: List[str] = Field(default_factory=list)
     parallel_tasks: List[str] = Field(default_factory=list)
     completed_tasks: Annotated[List[str], operator.add] = Field(default_factory=list)
-    execution_history: List[Dict[str, Any]] = Field(default_factory=list)
+    execution_history: Annotated[List[Dict[str, Any]], operator.add] = Field(default_factory=list)
     
     errors: List[str] = Field(default_factory=list)
-    retries: Dict[str, int] = Field(default_factory=dict)
+    retries: Annotated[Dict[str, int], _merge_dicts] = Field(default_factory=dict)
     human_approvals: Dict[str, bool] = Field(default_factory=dict)
 
     memory_references: List[Dict[str, Any]] = Field(default_factory=list)

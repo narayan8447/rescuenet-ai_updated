@@ -39,13 +39,16 @@ def route_supervisor(state: GraphState) -> Union[str, List[str]]:
     # Check Reflection Loop via PlanCritic
     parallel_nodes = ["route_optimization", "hospital_capacity", "shelter_allocation", "volunteer_coordination"]
     if all(n in completed for n in parallel_nodes):
-        last_agent = state.execution_history[-1]["agent"] if state.execution_history else ""
-        if last_agent != "PlanCritic":
+        # Cap reflection at 1 retry to prevent infinite loops
+        critic_retries = state.retries.get("plan_critic", 0)
+        if "plan_critic" not in completed:
             return "plan_critic"
-        else:
-            # If Critic rejected, loop back to resource allocation
-            if "rejected" in state.execution_history[-1]["summary"].lower():
-                logger.info("Reflection loop triggered by PlanCritic")
+        # Find the last PlanCritic entry in accumulated history
+        critic_entries = [e for e in state.execution_history if e.get("agent") == "PlanCritic"]
+        if critic_entries:
+            last_critic = critic_entries[-1]
+            if "rejected" in last_critic.get("summary", "").lower() and critic_retries < 2:
+                logger.info("Reflection loop triggered by PlanCritic", retry=critic_retries)
                 return "resource_allocation"
 
     # Dependent Nodes
