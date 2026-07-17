@@ -62,15 +62,28 @@ memory_manager = RedisMemoryManager()
 
 class RedisSaver(BaseCheckpointSaver):
     """
-    A LangGraph CheckpointSaver that persists checkpoints to Redis.
+    A LangGraph CheckpointSaver that persists checkpoints and writes to Redis.
     """
     def __init__(self, client: redis.Redis, *, serde: Optional[SerializerProtocol] = None) -> None:
         super().__init__(serde=serde)
         self.client = client
 
+    def _get_pending_writes(self, thread_id: str, checkpoint_ns: str, checkpoint_id: str) -> list[tuple[str, str, Any]]:
+        writes_key = f"writes:{thread_id}:{checkpoint_ns}:{checkpoint_id}"
+        writes_data = self.client.hgetall(writes_key)
+        pending_writes = []
+        if writes_data:
+            for field, val_b in writes_data.items():
+                val_str = val_b.decode('utf-8') if isinstance(val_b, bytes) else val_b
+                task_id_saved, channel_saved, val_hex, task_path_saved = json.loads(val_str)
+                deserialized_val = self.serde.loads(bytes.fromhex(val_hex))
+                pending_writes.append((task_id_saved, channel_saved, deserialized_val))
+        return pending_writes
+
     def get_tuple(self, config: RunnableConfig) -> Optional[CheckpointTuple]:
         thread_id = config["configurable"]["thread_id"]
-        ts = config["configurable"].get("thread_ts")
+        checkpoint_ns = config["configurable"].get("checkpoint_ns", "")
+        ts = config["configurable"].get("thread_ts") or config["configurable"].get("checkpoint_id")
         
         key = f"checkpoint:{thread_id}"
         
@@ -78,28 +91,35 @@ class RedisSaver(BaseCheckpointSaver):
             saved = self.client.hget(key, ts)
             if saved:
                 checkpoint_b, metadata_b = json.loads(saved)
-                # Since redis returns bytes, and we dumped as json, it's hex or string.
-                # Actually, we will just dump raw bytes using self.serde.dumps
+                pending_writes = self._get_pending_writes(thread_id, checkpoint_ns, ts)
                 return CheckpointTuple(
                     config=config,
                     checkpoint=self.serde.loads(bytes.fromhex(checkpoint_b)),
                     metadata=self.serde.loads(bytes.fromhex(metadata_b)),
+                    pending_writes=pending_writes,
                 )
         else:
             # Get all fields and values
             all_saved = self.client.hgetall(key)
             if all_saved:
-                # Find the max ts
-                # Decode keys if necessary (fakeredis/redis might return bytes)
                 keys_str = [k.decode('utf-8') if isinstance(k, bytes) else k for k in all_saved.keys()]
                 latest_ts = max(keys_str)
                 latest_saved = all_saved[latest_ts.encode('utf-8') if isinstance(list(all_saved.keys())[0], bytes) else latest_ts]
                 
                 checkpoint_b, metadata_b = json.loads(latest_saved)
+                pending_writes = self._get_pending_writes(thread_id, checkpoint_ns, latest_ts)
                 return CheckpointTuple(
-                    config={"configurable": {"thread_id": thread_id, "thread_ts": latest_ts}},
+                    config={
+                        "configurable": {
+                            "thread_id": thread_id,
+                            "checkpoint_ns": checkpoint_ns,
+                            "checkpoint_id": latest_ts,
+                            "thread_ts": latest_ts,
+                        }
+                    },
                     checkpoint=self.serde.loads(bytes.fromhex(checkpoint_b)),
                     metadata=self.serde.loads(bytes.fromhex(metadata_b)),
+                    pending_writes=pending_writes,
                 )
         return None
 
@@ -113,7 +133,7 @@ class RedisSaver(BaseCheckpointSaver):
     ) -> Iterator[CheckpointTuple]:
         
         thread_ids = [config["configurable"]["thread_id"]] if config else []
-        # If config is none, ideally we'd scan all keys starting with checkpoint:
+        checkpoint_ns = config["configurable"].get("checkpoint_ns", "") if config else ""
         if not thread_ids:
             for k in self.client.scan_iter("checkpoint:*"):
                 thread_id = k.decode('utf-8').split(":", 1)[1] if isinstance(k, bytes) else k.split(":", 1)[1]
@@ -125,7 +145,8 @@ class RedisSaver(BaseCheckpointSaver):
             for ts_b, val_b in all_saved.items():
                 ts = ts_b.decode('utf-8') if isinstance(ts_b, bytes) else ts_b
                 
-                if before and ts >= before["configurable"]["thread_ts"]:
+                before_ts = before["configurable"].get("thread_ts") or before["configurable"].get("checkpoint_id") if before else None
+                if before_ts and ts >= before_ts:
                     continue
                     
                 checkpoint_b, metadata_b = json.loads(val_b)
@@ -139,10 +160,19 @@ class RedisSaver(BaseCheckpointSaver):
                 elif limit is not None:
                     limit -= 1
                     
+                pending_writes = self._get_pending_writes(thread_id, checkpoint_ns, ts)
                 yield CheckpointTuple(
-                    config={"configurable": {"thread_id": thread_id, "thread_ts": ts}},
+                    config={
+                        "configurable": {
+                            "thread_id": thread_id,
+                            "checkpoint_ns": checkpoint_ns,
+                            "checkpoint_id": ts,
+                            "thread_ts": ts,
+                        }
+                    },
                     checkpoint=self.serde.loads(bytes.fromhex(checkpoint_b)),
                     metadata=metadata,
+                    pending_writes=pending_writes,
                 )
 
     def put(
@@ -154,10 +184,10 @@ class RedisSaver(BaseCheckpointSaver):
         **kwargs: Any,
     ) -> RunnableConfig:
         thread_id = config["configurable"]["thread_id"]
+        checkpoint_ns = config["configurable"].get("checkpoint_ns", "")
         ts = checkpoint["id"]
         key = f"checkpoint:{thread_id}"
         
-        # Serialize with langgraph's serde, then hex encode to store safely in JSON inside Redis Hash
         checkpoint_hex = self.serde.dumps(checkpoint).hex()
         metadata_hex = self.serde.dumps(metadata).hex()
         
@@ -167,6 +197,36 @@ class RedisSaver(BaseCheckpointSaver):
         return {
             "configurable": {
                 "thread_id": thread_id,
+                "checkpoint_ns": checkpoint_ns,
+                "checkpoint_id": ts,
                 "thread_ts": ts,
             }
         }
+
+    def put_writes(
+        self,
+        config: RunnableConfig,
+        writes: Sequence[tuple[str, Any]],
+        task_id: str,
+        task_path: str = "",
+    ) -> None:
+        thread_id = config["configurable"]["thread_id"]
+        checkpoint_ns = config["configurable"].get("checkpoint_ns", "")
+        checkpoint_id = config["configurable"]["checkpoint_id"]
+        
+        key = f"writes:{thread_id}:{checkpoint_ns}:{checkpoint_id}"
+        
+        for idx, (channel, val) in enumerate(writes):
+            val_hex = self.serde.dumps(val).hex()
+            field = f"{task_id}:{idx}"
+            val_data = json.dumps([task_id, channel, val_hex, task_path])
+            self.client.hset(key, field, val_data)
+
+    async def aput_writes(
+        self,
+        config: RunnableConfig,
+        writes: Sequence[tuple[str, Any]],
+        task_id: str,
+        task_path: str = "",
+    ) -> None:
+        self.put_writes(config, writes, task_id, task_path)
