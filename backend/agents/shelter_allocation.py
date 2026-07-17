@@ -60,7 +60,10 @@ class ShelterAllocationAgentV2:
             check_shelter_conditions(ranked_shelters[0]["name"])
             
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an AI civilian logistics coordinator. We have {displaced} displaced citizens needing shelter. Distribute them across the provided shelters, prioritizing the nearest (first in list). Do not exceed a shelter's capacity. If citizens remain unhoused after all shelters are full, they are unassigned. Provide a list of assignments."),
+            ("system", "You are an AI civilian logistics coordinator. We have {displaced} displaced citizens needing shelter. "
+                       "Distribute them across the provided shelters, prioritizing the nearest (first in list). Do not exceed a shelter's capacity. "
+                       "You must output exactly one assignment object per shelter. Do not create multiple assignment objects for the same shelter. "
+                       "For each shelter, calculate the total people assigned to it and provide a single assignment object with that aggregated count."),
             ("human", "Displaced Citizens: {displaced}\nShelters (Ordered by proximity): {shelters}")
         ])
         
@@ -118,8 +121,8 @@ class ShelterAllocationAgentV2:
             return final_assignments
             
         except Exception as e:
-            logger.error("shelter_allocation_failed", error=str(e))
-            raise e
+            logger.error("shelter_allocation_failed_falling_back_to_legacy", error=str(e))
+            return self._legacy_assign_shelters(damage_reports, shelters)
             
     def _legacy_assign_shelters(self, damage_reports: List[DamageReport], shelters: list) -> List[ShelterAssignment]:
         avg_damage_pct = sum(d.buildings_damaged_pct for d in damage_reports) / len(damage_reports)

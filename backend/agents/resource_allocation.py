@@ -104,8 +104,8 @@ class ResourceAllocationAgentV2:
             return assignments
             
         except Exception as e:
-            logger.error("resource_allocation_failed", error=str(e))
-            raise e
+            logger.error("resource_allocation_failed_falling_back_to_legacy", error=str(e))
+            return self._legacy_allocate(disaster_type, priorities, resources, top_n)
             
     def _legacy_allocate(self, disaster_type: str, priorities: List[PriorityItem], resources: dict, top_n: int = 4) -> List[ResourceAssignment]:
         DISASTER_RESOURCE_NEEDS = {

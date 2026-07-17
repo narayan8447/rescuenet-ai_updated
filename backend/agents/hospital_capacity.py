@@ -63,7 +63,13 @@ class HospitalCapacityAgentV2:
             fetch_live_hospital_status(ranked_hospitals[0]["name"])
             
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an AI medical dispatcher. We have {incoming} critical patients that need immediate admission. Distribute them across the provided list of hospitals. Fill the nearest (first in list) hospitals first. Consume ICU beds before general beds. Never exceed a hospital's capacity. If patients remain after filling all hospitals, the remaining are unassigned. Provide a list of assignments."),
+            ("system", "You are an AI medical dispatcher. Your task is to distribute {incoming} patients across the provided list of hospitals.\n"
+                       "Rules:\n"
+                       "1. Prioritize hospitals in the order they are listed (nearest first).\n"
+                       "2. For each hospital, assign patients up to its total capacity (general beds + ICU beds).\n"
+                       "3. You must output exactly one assignment object per hospital in your final assignments list.\n"
+                       "4. Do not output multiple objects for the same hospital.\n"
+                       "5. Do not invent or call any other tools or functions. You must only call the `HospitalAssignmentList` tool."),
             ("human", "Incoming Patients: {incoming}\nHospitals (Ordered by proximity): {hospitals}")
         ])
         
@@ -141,8 +147,8 @@ class HospitalCapacityAgentV2:
             return final_assignments
             
         except Exception as e:
-            logger.error("hospital_capacity_failed", error=str(e))
-            raise e
+            logger.error("hospital_capacity_failed_falling_back_to_legacy", error=str(e))
+            return self._legacy_assign_patients(damage_reports, hospitals)
             
     def _legacy_assign_patients(self, damage_reports: List[DamageReport], hospitals: list) -> List[HospitalAssignment]:
         total_casualties = sum(d.estimated_casualties for d in damage_reports)

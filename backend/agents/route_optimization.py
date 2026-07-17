@@ -110,8 +110,8 @@ class RouteOptimizationAgentV2:
             return final_routes
             
         except Exception as e:
-            logger.error("route_optimization_failed", error=str(e))
-            raise e
+            logger.error("route_optimization_failed_falling_back_to_legacy", error=str(e))
+            return self._legacy_plan_routes(assignments, priorities, damage_reports)
             
     def _legacy_plan_routes(self, assignments: List[ResourceAssignment], priorities: List[PriorityItem], damage_reports: List[DamageReport]) -> List[RouteInfo]:
         routes = []

@@ -113,8 +113,8 @@ class VolunteerCoordinationAgentV2:
             return final_assignments
             
         except Exception as e:
-            logger.error("volunteer_coordination_failed", error=str(e))
-            raise e
+            logger.error("volunteer_coordination_failed_falling_back_to_legacy", error=str(e))
+            return self._legacy_assign_volunteers(priorities, volunteers)
             
     def _legacy_assign_volunteers(self, priorities: List[PriorityItem], volunteers: list, top_n: int = 3) -> List[VolunteerAssignment]:
         TASK_SKILL_MAP = {
