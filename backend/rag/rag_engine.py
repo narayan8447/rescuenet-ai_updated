@@ -279,7 +279,7 @@ class RAGEngine:
         # 5. Sparse Retrieval (BM25)
         sparse_hits = []
         if self.bm25:
-            tokenized_query = tokenize(normalized_q)
+            tokenized_query = tokenize(query_obj.query)
             scores = self.bm25.get_scores(tokenized_query)
             import numpy as np
             top_indices = np.argsort(scores)[::-1][:query_obj.top_k * 2]
