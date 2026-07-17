@@ -9,7 +9,15 @@ from rank_bm25 import BM25Okapi
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
-from sentence_transformers import SentenceTransformer, CrossEncoder
+import requests
+import numpy as np
+
+try:
+    from sentence_transformers import SentenceTransformer, CrossEncoder
+    HAS_LOCAL_MODELS = True
+except ImportError:
+    HAS_LOCAL_MODELS = False
+
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.tools import DuckDuckGoSearchRun
@@ -17,6 +25,72 @@ from pydantic import BaseModel, Field
 
 from backend.rag.models import DocumentChunk, RAGQuery, Citation, RAGResponse
 from backend.core.logging import logger
+
+class HFHubEmbedder:
+    def __init__(self, model_name="sentence-transformers/all-MiniLM-L6-v2"):
+        self.model_name = model_name
+        self.api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_name}"
+
+    def encode(self, texts: List[str]) -> np.ndarray:
+        headers = {}
+        hf_token = os.environ.get("HF_TOKEN")
+        if hf_token:
+            headers["Authorization"] = f"Bearer {hf_token}"
+        try:
+            response = requests.post(
+                self.api_url,
+                json={"inputs": texts, "options": {"wait_for_model": True}},
+                headers=headers,
+                timeout=15
+            )
+            if response.status_code == 200:
+                return np.array(response.json())
+            else:
+                logger.warning("hf_embeddings_api_error", status=response.status_code, text=response.text)
+        except Exception as e:
+            logger.warning("hf_embeddings_failed", error=str(e))
+        logger.warning("using_fallback_dummy_embeddings")
+        return np.zeros((len(texts), 384))
+
+class HFHubReranker:
+    def __init__(self, model_name="cross-encoder/ms-marco-MiniLM-L-6-v2"):
+        self.model_name = model_name
+        self.api_url = f"https://api-inference.huggingface.co/models/{model_name}"
+
+    def predict(self, pairs: List[List[str]]) -> List[float]:
+        headers = {}
+        hf_token = os.environ.get("HF_TOKEN")
+        if hf_token:
+            headers["Authorization"] = f"Bearer {hf_token}"
+        try:
+            payload = {"inputs": [{"text": p[0], "text_pair": p[1]} for p in pairs]}
+            response = requests.post(
+                self.api_url,
+                json=payload,
+                headers=headers,
+                timeout=15
+            )
+            if response.status_code == 200:
+                res = response.json()
+                if isinstance(res, list):
+                    scores = []
+                    for item in res:
+                        if isinstance(item, dict) and "score" in item:
+                            scores.append(item["score"])
+                        elif isinstance(item, list) and len(item) > 0 and isinstance(item[0], dict):
+                            scores.append(item[0]["score"])
+                        else:
+                            scores.append(0.5)
+                    return scores
+        except Exception as e:
+            logger.warning("hf_reranker_failed", error=str(e))
+        scores = []
+        for query, text in pairs:
+            q_words = set(query.lower().split())
+            t_words = set(text.lower().split())
+            overlap = len(q_words.intersection(t_words))
+            scores.append(float(overlap) / max(len(q_words), 1))
+        return scores
 
 # Initialize models lazily
 _embedder = None
@@ -27,15 +101,31 @@ _llm = None
 def get_embedder():
     global _embedder
     if _embedder is None:
-        logger.info("loading_embedding_model", model="all-MiniLM-L6-v2")
-        _embedder = SentenceTransformer("all-MiniLM-L6-v2")
+        if HAS_LOCAL_MODELS:
+            try:
+                logger.info("loading_embedding_model", model="all-MiniLM-L6-v2")
+                _embedder = SentenceTransformer("all-MiniLM-L6-v2")
+            except Exception as e:
+                logger.warning("local_embedding_loading_failed", error=str(e))
+                _embedder = HFHubEmbedder()
+        else:
+            logger.info("loading_embedding_model_api")
+            _embedder = HFHubEmbedder()
     return _embedder
 
 def get_reranker():
     global _reranker
     if _reranker is None:
-        logger.info("loading_cross_encoder", model="cross-encoder/ms-marco-MiniLM-L-6-v2")
-        _reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        if HAS_LOCAL_MODELS:
+            try:
+                logger.info("loading_cross_encoder", model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+                _reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+            except Exception as e:
+                logger.warning("local_reranker_loading_failed", error=str(e))
+                _reranker = HFHubReranker()
+        else:
+            logger.info("loading_cross_encoder_api")
+            _reranker = HFHubReranker()
     return _reranker
 
 def get_llm():
