@@ -10,7 +10,6 @@
   [![Redis](https://img.shields.io/badge/Redis-Memory-DC382D.svg?logo=redis)](https://redis.io/)
   [![Qdrant](https://img.shields.io/badge/Qdrant-Vector_Search-E1436F.svg)](https://qdrant.tech/)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-  [![IBM SkillsBuild](https://img.shields.io/badge/IBM_SkillsBuild-Finalist-0f62fe.svg)](https://skillsbuild.org/)
 
 </div>
 
