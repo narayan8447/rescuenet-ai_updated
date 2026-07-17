@@ -150,6 +150,8 @@ class RedisSaver(BaseCheckpointSaver):
         config: RunnableConfig,
         checkpoint: Checkpoint,
         metadata: CheckpointMetadata,
+        *args: Any,
+        **kwargs: Any,
     ) -> RunnableConfig:
         thread_id = config["configurable"]["thread_id"]
         ts = checkpoint["id"]
