@@ -1,7 +1,7 @@
 import os
 import json
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Dict, Iterator, AsyncIterator
+from typing import Any, Optional, Dict, Iterator, AsyncIterator, Sequence
 import asyncio
 from functools import partial
 import redis
