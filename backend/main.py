@@ -7,8 +7,17 @@ Run with:
 Exposes the multi-agent pipeline as a REST API for the Streamlit dashboard
 (or any other client / Postman / curl) to consume.
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from secure import Secure
+from fastapi_cache import FastAPICache
+from fastapi_cache.decorator import cache
+from fastapi_cache.backends.redis import RedisBackend
+from redis import asyncio as aioredis
+import os
 
 from backend.models.schemas import DisasterTriggerRequest, SituationReport
 from backend.agents import orchestrator
@@ -22,103 +31,86 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:8501", "http://127.0.0.1:8501"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+secure_headers = Secure()
+@app.middleware("http")
+async def set_secure_headers(request, call_next):
+    response = await call_next(request)
+    secure_headers.set_headers(response)
+    return response
 
 
 @app.on_event("startup")
 def startup():
     database.init_db()
+    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    redis_client = aioredis.from_url(redis_url)
+    FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
 
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "version": "2.0.0"}
 
 @app.get("/")
 def root():
     return {"message": "RescueNet AI backend is running. See /docs for the API."}
 
+from backend.rag.api import router as rag_router
+app.include_router(rag_router)
+
+# OpenTelemetry Instrumentation
+try:
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    FastAPIInstrumentor.instrument_app(app)
+except ImportError:
+    pass
 
 from backend.agents.supervisor_v2 import supervisor_graph
 from backend.models.schemas import AgentTrace
+from backend.core.logging import logger
 
 @app.post("/api/disaster/trigger", response_model=SituationReport)
-def trigger_disaster(req: DisasterTriggerRequest):
+@limiter.limit("20/minute")
+def trigger_disaster(request: Request, req: DisasterTriggerRequest):
     """Runs the full multi-agent pipeline for a newly reported disaster using LangGraph."""
+    logger.info("disaster_triggered", type=req.disaster_type, location=req.location_name)
+    logger.metric("pipeline_start", 1, tags={"type": req.disaster_type})
     
-    initial_state = {
-        "raw_trigger": req.model_dump(),
-        "live_state": database.STATE,
-    }
-    
-    # Execute the LangGraph supervisor workflow
-    final_state = supervisor_graph.invoke(initial_state)
-    
-    # Reconstruct the SituationReport (maintaining compatibility with frontend)
-    event = final_state.get("event")
-    damage_reports = final_state.get("damage_reports", [])
-    priorities = final_state.get("priorities", [])
-    resource_assignments = final_state.get("resource_assignments", [])
-    routes = final_state.get("routes", [])
-    hospital_assignments = final_state.get("hospital_assignments", [])
-    shelter_assignments = final_state.get("shelter_assignments", [])
-    relief_plan = final_state.get("relief_plan", [])
-    volunteer_assignments = final_state.get("volunteer_assignments", [])
-    alerts = final_state.get("alerts", [])
-    forecasts = final_state.get("forecasts", [])
-    narrative_summary = final_state.get("narrative_summary", "Report generation failed.")
-
-    # Reconstruct the trace list
-    trace = []
-    if event:
-        trace.append(AgentTrace(agent="Event Detection (V2)", summary="Detected event", data=event.model_dump()))
-    if damage_reports:
-        trace.append(AgentTrace(agent="Damage Assessment (V2)", summary="Assessed damage", data=[d.model_dump() for d in damage_reports]))
-    if priorities:
-        trace.append(AgentTrace(agent="Rescue Prioritization (V2)", summary="Calculated priorities", data=[p.model_dump() for p in priorities]))
-    if resource_assignments:
-        trace.append(AgentTrace(agent="Resource Allocation (V2)", summary="Allocated resources", data=[r.model_dump() for r in resource_assignments]))
-    if routes:
-        trace.append(AgentTrace(agent="Route Optimization (V2)", summary="Calculated routes", data=[r.model_dump() for r in routes]))
-    if hospital_assignments:
-        trace.append(AgentTrace(agent="Hospital Capacity (V2)", summary="Assigned hospitals", data=[h.model_dump() for h in hospital_assignments]))
-    if shelter_assignments:
-        trace.append(AgentTrace(agent="Shelter Allocation (V2)", summary="Assigned shelters", data=[s.model_dump() for s in shelter_assignments]))
-    if relief_plan:
-        trace.append(AgentTrace(agent="Relief Distribution (V2)", summary="Planned relief", data=[r.model_dump() for r in relief_plan]))
-    if volunteer_assignments:
-        trace.append(AgentTrace(agent="Volunteer Coordination (V2)", summary="Coordinated volunteers", data=[v.model_dump() for v in volunteer_assignments]))
-    if alerts:
-        trace.append(AgentTrace(agent="Communication (V2)", summary="Generated alerts", data=[a.model_dump() for a in alerts]))
-    if forecasts:
-        trace.append(AgentTrace(agent="Prediction (V2)", summary="Generated forecasts", data=[f.model_dump() for f in forecasts]))
-    
-    trace.append(AgentTrace(agent="Situation Reporting (V2)", summary="Compiled final report", data={"narrative_summary": narrative_summary}))
-
-    report = SituationReport(
-        event=event,
-        damage_reports=damage_reports,
-        priorities=priorities,
-        resource_assignments=resource_assignments,
-        routes=routes,
-        hospital_assignments=hospital_assignments,
-        shelter_assignments=shelter_assignments,
-        relief_plan=relief_plan,
-        volunteer_assignments=volunteer_assignments,
-        alerts=alerts,
-        forecasts=forecasts,
-        narrative_summary=narrative_summary,
-        trace=trace,
-    )
+    report = orchestrator.run_pipeline(req, database.STATE)
     
     database.save_incident(req.disaster_type, req.location_name, report.model_dump())
+    
+    logger.info("disaster_processed", type=req.disaster_type, location=req.location_name)
+    logger.metric("pipeline_complete", 1, tags={"type": req.disaster_type})
     return report
 
 
 
 @app.get("/api/state")
+@cache(expire=5)
 def get_state():
     """Current live state of hospitals, shelters, resources, and volunteers."""
     return database.STATE
+
+@app.get("/api/simulation/state")
+def get_simulation_state():
+    """Get the current state of the dynamic simulation."""
+    return database.STATE
+
+@app.post("/api/simulation/tick")
+def tick_simulation(ticks: int = 1):
+    """Fast forward the disaster simulation by N ticks."""
+    database.advance_simulation(ticks)
+    return {"message": f"Simulation advanced by {ticks} ticks.", "state": database.STATE}
 
 
 @app.post("/api/reset")
@@ -129,6 +121,7 @@ def reset():
 
 
 @app.get("/api/incidents")
+@cache(expire=15)
 def get_incidents(limit: int = 20):
     """History of past disaster triggers (long-term memory)."""
     return database.list_incidents(limit=limit)
