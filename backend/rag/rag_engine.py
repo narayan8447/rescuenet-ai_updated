@@ -52,14 +52,13 @@ def get_llm():
 def get_qdrant():
     global _qdrant_client
     if _qdrant_client is None:
-        url = os.environ.get("QDRANT_URL", "http://localhost:6333")
+        url = os.environ.get("QDRANT_URL")
         api_key = os.environ.get("QDRANT_API_KEY")
-        if api_key:
+        if url:
             _qdrant_client = QdrantClient(url=url, api_key=api_key)
         else:
-            # Fallback to local memory if no URL/Key is properly provided
-            _qdrant_client = QdrantClient(":memory:")
-            
+            # Fallback to local file memory for Render/Zero-Dependency deployments
+            _qdrant_client = QdrantClient(path="qdrant_data")
         # Ensure collection exists
         try:
             _qdrant_client.get_collection("rescuenet_knowledge")

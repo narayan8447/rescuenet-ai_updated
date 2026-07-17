@@ -54,6 +54,18 @@ def startup():
     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     redis_client = aioredis.from_url(redis_url)
     FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
+    
+    # Auto-ingest RAG data for zero-dependency deployments
+    if not os.environ.get("QDRANT_URL") and not os.path.exists("qdrant_data"):
+        from backend.rag.rag_engine import rag_engine
+        import logging
+        logging.info("Auto-ingesting RAG documents into local Qdrant...")
+        data = [
+            {"text": "Flood Evacuation: Move to higher ground immediately. Do not walk through moving water. Six inches of moving water can make you fall. If you must walk in water, walk where the water is not moving. Use a stick to check the firmness of the ground in front of you. Do not drive into flooded areas. If floodwaters rise around your car, abandon the car and move to higher ground if you can do so safely.", "metadata": {"source": "FEMA Flood Protocol", "type": "guideline"}},
+            {"text": "Earthquake Response: Drop, Cover, and Hold On! Drop to your hands and knees. Cover your head and neck with your arms. If a sturdy table or desk is nearby, crawl underneath it for shelter. If no shelter is nearby, crawl next to an interior wall (away from windows). Hold on to any sturdy covering so you can move with it until the shaking stops.", "metadata": {"source": "Red Cross Earthquake Guide", "type": "guideline"}},
+            {"text": "Wildfire Protocols: Evacuate immediately if instructed to do so. If trapped, call 911. Turn on lights to increase visibility. Close all doors and windows but do not lock them. Fill sinks and tubs with cold water. Keep your emergency supply kit ready. If outdoors, look for a body of water or cleared area. Lie flat and cover your body with wet clothing or soil.", "metadata": {"source": "National Fire Protection Association", "type": "guideline"}}
+        ]
+        rag_engine.ingest_documents(data)
 
 
 @app.get("/health")
