@@ -31,19 +31,16 @@ def run_pipeline(req: DisasterTriggerRequest, state: dict) -> SituationReport:
     except Exception as e:
         print(f"Observability warning: {e}")
         
-    # Run until the first interruption (resource_allocation)
+    # Run until the first interruption or completion
     final_state = supervisor_graph.invoke(initial_state, config)
     
-    # Resume after resource_allocation interrupt
-    if supervisor_graph.get_state(config).next:
-        print("HITL: Resource Allocation plan generated. Simulating human approval...")
-        # Simulate approval and resume
-        final_state = supervisor_graph.invoke(None, config)
-    
-    # Resume after communication interrupt
-    if supervisor_graph.get_state(config).next:
-        print("HITL: Communication alerts generated. Simulating human approval...")
-        # Simulate approval and resume
+    # Generic loop to auto-resume on any Human-In-The-Loop interrupts until the graph is fully complete
+    while True:
+        state_info = supervisor_graph.get_state(config)
+        if not state_info.next:
+            break
+        next_node = state_info.next[0]
+        print(f"HITL: Interrupted at '{next_node}'. Simulating human approval and resuming...")
         final_state = supervisor_graph.invoke(None, config)
     
     # Handle both dict and Pydantic model returns

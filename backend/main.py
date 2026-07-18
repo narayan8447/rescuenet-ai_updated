@@ -162,26 +162,25 @@ async def rag_search(body: dict):
         raise HTTPException(status_code=400, detail="Query is required")
     
     try:
-        from backend.rag.rag_engine import retrieve
-        results = retrieve(query, top_k=5)
+        from backend.rag.rag_engine import rag_engine
+        from backend.rag.models import RAGQuery
         
-        # Format citations from RAG results
+        query_obj = RAGQuery(query=query, top_k=5)
+        rag_response = rag_engine.retrieve(query_obj)
+        
+        # Format citations from RAG response
         citations = []
-        for r in results:
+        for c in rag_response.citations:
             citations.append({
-                "source_name": r.get("source", r.get("metadata", {}).get("source", "RescueNet Knowledge Base")),
-                "text_snippet": r.get("text", r.get("content", "")),
-                "relevance_score": r.get("score", 0.0),
+                "source_name": c.source_name,
+                "text_snippet": c.text_snippet,
+                "relevance_score": c.relevance_score,
             })
-        
-        # Generate a summary answer from the top results
-        if citations:
-            snippets = [c["text_snippet"] for c in citations[:3] if c["text_snippet"]]
-            answer = "Based on the knowledge base:\n\n" + "\n\n".join(f"- {s}" for s in snippets)
-        else:
-            answer = "No relevant information found in the knowledge base for your query."
-        
-        return {"answer": answer, "citations": citations}
+            
+        return {
+            "answer": rag_response.answer,
+            "citations": citations
+        }
     except Exception as e:
         logger.error("rag_search_failed", error=str(e))
         return {"answer": f"RAG search encountered an error: {str(e)}", "citations": []}
