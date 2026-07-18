@@ -12,7 +12,13 @@ from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, Fi
 import requests
 import numpy as np
 
-HAS_LOCAL_MODELS = False
+try:
+    if os.environ.get("RENDER") is not None:
+        raise ImportError("Forcing API mode on Render to save memory")
+    from sentence_transformers import SentenceTransformer, CrossEncoder
+    HAS_LOCAL_MODELS = True
+except ImportError:
+    HAS_LOCAL_MODELS = False
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
