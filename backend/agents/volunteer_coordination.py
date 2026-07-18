@@ -30,7 +30,7 @@ def check_volunteer_safety_status(volunteer_name: str) -> dict:
 class VolunteerCoordinationAgentV2:
     def __init__(self):
         self.llm = ChatGroq(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
             max_retries=2
         )

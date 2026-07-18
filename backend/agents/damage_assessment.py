@@ -32,7 +32,7 @@ class DamageAssessmentAgentV2:
     def __init__(self):
         # Initialize Groq LLM. Expects GROQ_API_KEY in environment.
         self.llm = ChatGroq(
-            model="llama-3.3-70b-versatile", # Larger model for spatial reasoning
+            model="llama-3.1-8b-instant", # Larger model for spatial reasoning
             api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
             max_retries=2
         )
