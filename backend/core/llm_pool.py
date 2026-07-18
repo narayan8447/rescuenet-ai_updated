@@ -36,6 +36,15 @@ def get_openrouter_llm(max_retries: int = 10) -> ChatOpenAI:
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
         max_retries=max_retries,
+        extra_body={
+            "models": [
+                "google/gemma-4-31b-it:free",
+                "qwen/qwen3-next-80b-a3b-instruct:free",
+                "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+                "nvidia/nemotron-3-super-120b-a12b:free",
+                "google/gemma-4-26b-a4b-it:free"
+            ]
+        },
         default_headers={
             "HTTP-Referer": "https://rescuenet-ai.onrender.com",
             "X-Title": "RescueNet AI",
