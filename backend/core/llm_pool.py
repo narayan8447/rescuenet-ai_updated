@@ -16,9 +16,9 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 def get_google_llm(max_retries: int = 10) -> ChatGoogleGenerativeAI:
-    """Return a Google-backed LLM (gemini-1.5-flash)."""
+    """Return a Google-backed LLM (gemini-2.5-flash)."""
     return ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
+        model="gemini-2.5-flash",
         api_key=os.environ.get("GOOGLE_API_KEY", "dummy_key"),
         max_retries=max_retries,
     )
