@@ -8,7 +8,7 @@ Uses Groq LLM for routing strategy and dynamic hazard avoidance.
 import os
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_openrouter_llm
+from backend.core.llm_pool import get_google_llm
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import ResourceAssignment, DamageReport, RouteInfo, PriorityItem
@@ -27,7 +27,7 @@ def fetch_live_traffic(destination: str) -> dict:
 
 class RouteOptimizationAgentV2:
     def __init__(self):
-        self.llm = get_openrouter_llm()
+        self.llm = get_google_llm()
         
     def _road_status_for(self, target_name: str, priorities: List[PriorityItem], damage_reports: List[DamageReport]) -> str:
         poi = next((p for p in priorities if p.entity == target_name), None)
@@ -44,8 +44,8 @@ class RouteOptimizationAgentV2:
         if not assignments:
             return []
             
-        if os.environ.get("OPENROUTER_API_KEY", "dummy_key") == "dummy_key":
-            logger.warn("using_fallback_route_optimization_due_to_missing_groq_key")
+        if os.environ.get("GOOGLE_API_KEY", "dummy_key") == "dummy_key":
+            logger.warn("using_fallback_route_optimization_due_to_missing_google_key")
             return self._legacy_plan_routes(assignments, priorities, damage_reports)
             
         # Simulate tool usage for the first destination to demonstrate tool integration

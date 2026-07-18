@@ -8,13 +8,14 @@ import os
 import time
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_openrouter_llm
+from backend.core.llm_pool import get_google_llm
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import PriorityItem, ResourceAssignment
 from backend.core.logging import logger
 from backend.utils import haversine_km
 from backend.core.memory import memory_manager
+import json
 
 class ResourceAssignmentList(BaseModel):
     """Wrapper to force LLM to output a list of ResourceAssignments."""
@@ -40,8 +41,8 @@ class ResourceAllocationAgentV2:
         if not targets:
             return []
             
-        if os.environ.get("OPENROUTER_API_KEY", "dummy_key") == "dummy_key":
-            logger.warn("using_fallback_resource_allocation_due_to_missing_groq_key")
+        if os.environ.get("GOOGLE_API_KEY", "dummy_key") == "dummy_key":
+            logger.warn("using_fallback_resource_allocation_due_to_missing_google_key")
             return self._legacy_allocate(disaster_type, priorities, resources, top_n)
             
         # Simulate tool usage (pre-calculating speeds or checking fleet API)

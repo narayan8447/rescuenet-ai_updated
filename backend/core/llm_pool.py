@@ -12,6 +12,16 @@ provider's TPM budget is exhausted during a pipeline run.
 import os
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+
+def get_google_llm(max_retries: int = 10) -> ChatGoogleGenerativeAI:
+    """Return a Google-backed LLM (gemini-1.5-flash)."""
+    return ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        api_key=os.environ.get("GOOGLE_API_KEY", "dummy_key"),
+        max_retries=max_retries,
+    )
 
 
 def get_groq_llm(max_retries: int = 10) -> ChatGroq:
