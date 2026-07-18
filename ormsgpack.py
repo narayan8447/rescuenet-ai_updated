@@ -1,10 +1,5 @@
-import sys
-import types
 import json
 from typing import Any
-
-# Create a genuine module object
-ormsgpack_mock = types.ModuleType("ormsgpack")
 
 class MsgpackEncodeError(Exception):
     pass
@@ -54,17 +49,3 @@ def unpackb(data_bytes, ext_hook=None, option=None):
         return obj
         
     return revive(decoded)
-
-# Assign attributes to the module
-ormsgpack_mock.MsgpackEncodeError = MsgpackEncodeError
-ormsgpack_mock.Ext = Ext
-ormsgpack_mock.OPT_NON_STR_KEYS = OPT_NON_STR_KEYS
-ormsgpack_mock.OPT_PASSTHROUGH_DATACLASS = OPT_PASSTHROUGH_DATACLASS
-ormsgpack_mock.OPT_PASSTHROUGH_DATETIME = OPT_PASSTHROUGH_DATETIME
-ormsgpack_mock.OPT_PASSTHROUGH_ENUM = OPT_PASSTHROUGH_ENUM
-ormsgpack_mock.OPT_PASSTHROUGH_UUID = OPT_PASSTHROUGH_UUID
-ormsgpack_mock.packb = packb
-ormsgpack_mock.unpackb = unpackb
-
-# Inject the module object into sys.modules
-sys.modules["ormsgpack"] = ormsgpack_mock

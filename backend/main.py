@@ -7,8 +7,6 @@ Run with:
 Exposes the multi-agent pipeline as a REST API for the Streamlit dashboard
 (or any other client / Postman / curl) to consume.
 """
-import backend.core.mock_ormsgpack
-
 import faulthandler
 faulthandler.enable()
 
