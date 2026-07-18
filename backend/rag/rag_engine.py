@@ -12,11 +12,7 @@ from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, Fi
 import requests
 import numpy as np
 
-try:
-    from sentence_transformers import SentenceTransformer, CrossEncoder
-    HAS_LOCAL_MODELS = True
-except ImportError:
-    HAS_LOCAL_MODELS = False
+HAS_LOCAL_MODELS = False
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
