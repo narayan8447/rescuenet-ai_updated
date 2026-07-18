@@ -8,7 +8,7 @@ simulated tools (like weather) to make grounded predictions.
 import os
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from langchain_groq import ChatGroq
+from backend.core.llm_pool import get_groq_llm
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import DisasterEvent, DamageReport, Forecast
@@ -29,11 +29,7 @@ def fetch_weather_forecast(location: str) -> str:
 
 class PredictionAgentV2:
     def __init__(self):
-        self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",
-            api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
-            max_retries=10
-        )
+        self.llm = get_groq_llm()
         
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def forecast(self, event: DisasterEvent, damage_reports: List[DamageReport]) -> List[Forecast]:

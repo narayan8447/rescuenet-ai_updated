@@ -20,7 +20,7 @@ try:
 except ImportError:
     HAS_LOCAL_MODELS = False
 
-from langchain_groq import ChatGroq
+from backend.core.llm_pool import get_openrouter_llm
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.tools import DuckDuckGoSearchRun
 from pydantic import BaseModel, Field
@@ -133,12 +133,8 @@ def get_reranker():
 def get_llm():
     global _llm
     if _llm is None:
-        # Utilizing Llama 3.3 70B for strong reasoning and tool-routing capabilities
-        _llm = ChatGroq(
-            model="llama-3.1-8b-instant",
-            api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
-            max_retries=10
-        )
+        # Using OpenRouter to distribute load away from Groq
+        _llm = get_openrouter_llm()
     return _llm
 
 def get_qdrant():

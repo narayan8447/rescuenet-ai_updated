@@ -92,13 +92,10 @@ def build_supervisor_graph():
         if isinstance(state_obj, dict):
             state_obj = GraphState(**state_obj)
         
-        from langchain_groq import ChatGroq
+        from backend.core.llm_pool import get_groq_llm
         import os
         from langchain_core.messages import SystemMessage, HumanMessage
-        llm = ChatGroq(
-            model="llama-3.1-8b-instant",
-            api_key=os.environ.get("GROQ_API_KEY", "dummy_key")
-        )
+        llm = get_groq_llm()
         
         # Determine if we should fail or approve based on a mock strict critique
         prompt = f"Critique this allocation: Hospitals {len(state_obj.hospital_assignments)}, Resources {len(state_obj.resource_assignments)}. Reply REJECT if unbalanced, else APPROVE."

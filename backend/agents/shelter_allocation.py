@@ -8,7 +8,7 @@ import os
 import time
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from langchain_groq import ChatGroq
+from backend.core.llm_pool import get_openrouter_llm
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import DamageReport, ShelterAssignment
@@ -28,11 +28,7 @@ def check_shelter_conditions(shelter_name: str) -> dict:
 
 class ShelterAllocationAgentV2:
     def __init__(self):
-        self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",
-            api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
-            max_retries=10
-        )
+        self.llm = get_openrouter_llm()
         
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def assign_shelters(self, damage_reports: List[DamageReport], shelters: list) -> List[ShelterAssignment]:
@@ -42,7 +38,7 @@ class ShelterAllocationAgentV2:
         if not shelters or not damage_reports:
             return []
             
-        if os.environ.get("GROQ_API_KEY", "dummy_key") == "dummy_key":
+        if os.environ.get("OPENROUTER_API_KEY", "dummy_key") == "dummy_key":
             logger.warn("using_fallback_shelter_allocation_due_to_missing_groq_key")
             return self._legacy_assign_shelters(damage_reports, shelters)
             

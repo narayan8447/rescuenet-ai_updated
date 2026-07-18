@@ -9,7 +9,7 @@ import os
 import time
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from langchain_groq import ChatGroq
+from backend.core.llm_pool import get_openrouter_llm
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import DamageReport, HospitalAssignment
@@ -29,11 +29,7 @@ def fetch_live_hospital_status(hospital_name: str) -> dict:
 
 class HospitalCapacityAgentV2:
     def __init__(self):
-        self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",
-            api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
-            max_retries=10
-        )
+        self.llm = get_openrouter_llm()
         
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def assign_patients(self, damage_reports: List[DamageReport], hospitals: list) -> List[HospitalAssignment]:
@@ -43,7 +39,7 @@ class HospitalCapacityAgentV2:
         if not hospitals or not damage_reports:
             return []
             
-        if os.environ.get("GROQ_API_KEY", "dummy_key") == "dummy_key":
+        if os.environ.get("OPENROUTER_API_KEY", "dummy_key") == "dummy_key":
             logger.warn("using_fallback_hospital_capacity_due_to_missing_groq_key")
             return self._legacy_assign_patients(damage_reports, hospitals)
             

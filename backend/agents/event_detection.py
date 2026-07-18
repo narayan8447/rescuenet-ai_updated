@@ -7,7 +7,7 @@ Uses Groq for fast inference, structured output, and Tenacity for retries.
 import os
 from datetime import datetime, timezone
 from tenacity import retry, stop_after_attempt, wait_exponential
-from langchain_groq import ChatGroq
+from backend.core.llm_pool import get_groq_llm
 from langchain_core.prompts import ChatPromptTemplate
 from backend.models.schemas import DisasterTriggerRequest, DisasterEvent
 from backend.core.logging import logger
@@ -21,11 +21,7 @@ def geocode_location(location_name: str) -> dict:
 class EventDetectionAgentV2:
     def __init__(self):
         # Initialize Groq LLM. Expects GROQ_API_KEY in environment.
-        self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",
-            api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
-            max_retries=10
-        )
+        self.llm = get_groq_llm()
         
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def detect(self, req: DisasterTriggerRequest) -> DisasterEvent:

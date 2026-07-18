@@ -8,7 +8,7 @@ Natively integrates the Agentic RAG engine to ground the report in official SOPs
 import os
 from typing import List, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential
-from langchain_groq import ChatGroq
+from backend.core.llm_pool import get_openrouter_llm
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
@@ -27,11 +27,7 @@ class NarrativeSummary(BaseModel):
 
 class SituationReportingAgentV2:
     def __init__(self):
-        self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",  # High intelligence required for synthesis
-            api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
-            max_retries=10
-        )
+        self.llm = get_openrouter_llm()
              
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def compile_summary(
@@ -50,7 +46,7 @@ class SituationReportingAgentV2:
         logger.info("situation_reporting_started")
         logger.metric("agent_start", 1.0, tags={"agent": "situation_reporting"})
         
-        if os.environ.get("GROQ_API_KEY", "dummy_key") == "dummy_key":
+        if os.environ.get("OPENROUTER_API_KEY", "dummy_key") == "dummy_key":
             logger.warn("using_fallback_situation_reporting_due_to_missing_groq_key")
             return self._legacy_compile_summary(event, damage_reports, priorities, resource_assignments, routes, hospital_assignments, shelter_assignments, relief_plan, volunteer_assignments, forecasts)
         

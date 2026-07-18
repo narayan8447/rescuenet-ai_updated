@@ -7,7 +7,7 @@ Uses Groq for fast inference, structured output, and Tenacity for retries.
 import os
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from langchain_groq import ChatGroq
+from backend.core.llm_pool import get_groq_llm
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import DisasterEvent, DamageReport
@@ -31,11 +31,7 @@ class DamageReportList(BaseModel):
 class DamageAssessmentAgentV2:
     def __init__(self):
         # Initialize Groq LLM. Expects GROQ_API_KEY in environment.
-        self.llm = ChatGroq(
-            model="llama-3.1-8b-instant", # Larger model for spatial reasoning
-            api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
-            max_retries=10
-        )
+        self.llm = get_groq_llm()
         
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def assess(self, event: DisasterEvent) -> List[DamageReport]:
