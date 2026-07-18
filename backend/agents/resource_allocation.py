@@ -30,7 +30,8 @@ def calculate_eta(resource_type: str, distance_km: float) -> float:
 
 class ResourceAllocationAgentV2:
     def __init__(self):
-        self.llm = get_openrouter_llm()
+        # Use Google AI Studio (Gemini 1.5 Flash) for highly reliable JSON tool calling
+        self.llm = get_google_llm()
         
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def allocate(self, disaster_type: str, priorities: List[PriorityItem], resources: dict, top_n: int = 4) -> List[ResourceAssignment]:
