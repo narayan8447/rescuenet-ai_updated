@@ -30,7 +30,7 @@ def calculate_eta(resource_type: str, distance_km: float) -> float:
 class ResourceAllocationAgentV2:
     def __init__(self):
         self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",
+            model="groq/compound-mini",
             api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
             max_retries=2
         )

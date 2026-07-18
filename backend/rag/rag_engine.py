@@ -135,7 +135,7 @@ def get_llm():
     if _llm is None:
         # Utilizing Llama 3.3 70B for strong reasoning and tool-routing capabilities
         _llm = ChatGroq(
-            model="llama-3.1-8b-instant",
+            model="groq/compound-mini",
             api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
             max_retries=2
         )

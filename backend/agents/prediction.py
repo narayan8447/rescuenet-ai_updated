@@ -30,7 +30,7 @@ def fetch_weather_forecast(location: str) -> str:
 class PredictionAgentV2:
     def __init__(self):
         self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",
+            model="groq/compound-mini",
             api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
             max_retries=2
         )
