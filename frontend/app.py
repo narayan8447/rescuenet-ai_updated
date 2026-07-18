@@ -228,7 +228,7 @@ with tab_live:
 with tab_history:
     st.markdown("### Past Incidents")
     try:
-        incidents = requests.get(f"{API_BASE}/api/incidents", timeout=30).json()
+        incidents = requests.get(f"{API_BASE}/api/incidents", timeout=120).json()
     except requests.exceptions.ConnectionError:
         incidents = None
         st.error("Backend not reachable.")
@@ -238,7 +238,7 @@ with tab_history:
         st.dataframe(df, use_container_width=True, hide_index=True)
         chosen = st.selectbox("View full report for incident #", df["id"].tolist())
         if st.button("Load report"):
-            detail = requests.get(f"{API_BASE}/api/incidents/{chosen}", timeout=30).json()
+            detail = requests.get(f"{API_BASE}/api/incidents/{chosen}", timeout=120).json()
             st.json(detail["report"])
     elif incidents == []:
         st.info("No incidents triggered yet.")
@@ -247,7 +247,7 @@ with tab_history:
 with tab_state:
     st.markdown("### Live Resource / Facility State")
     try:
-        state = requests.get(f"{API_BASE}/api/state", timeout=30).json()
+        state = requests.get(f"{API_BASE}/api/state", timeout=120).json()
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("**Hospitals**")

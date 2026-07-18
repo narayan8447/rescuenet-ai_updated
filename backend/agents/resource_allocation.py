@@ -8,7 +8,7 @@ import os
 import time
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_groq_llm
+from backend.core.llm_pool import get_openrouter_llm
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import PriorityItem, ResourceAssignment
@@ -29,7 +29,7 @@ def calculate_eta(resource_type: str, distance_km: float) -> float:
 
 class ResourceAllocationAgentV2:
     def __init__(self):
-        self.llm = get_groq_llm()
+        self.llm = get_openrouter_llm()
         
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def allocate(self, disaster_type: str, priorities: List[PriorityItem], resources: dict, top_n: int = 4) -> List[ResourceAssignment]:
@@ -40,7 +40,7 @@ class ResourceAllocationAgentV2:
         if not targets:
             return []
             
-        if os.environ.get("GROQ_API_KEY", "dummy_key") == "dummy_key":
+        if os.environ.get("OPENROUTER_API_KEY", "dummy_key") == "dummy_key":
             logger.warn("using_fallback_resource_allocation_due_to_missing_groq_key")
             return self._legacy_allocate(disaster_type, priorities, resources, top_n)
             

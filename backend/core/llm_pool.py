@@ -32,7 +32,7 @@ def get_openrouter_llm(max_retries: int = 10) -> ChatOpenAI:
     """
     api_key = os.environ.get("OPENROUTER_API_KEY", "dummy_key")
     return ChatOpenAI(
-        model="google/gemma-2-9b-it:free",
+        model="google/gemma-4-31b-it:free",
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
         max_retries=max_retries,
