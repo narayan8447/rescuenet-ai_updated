@@ -4,7 +4,22 @@ Pydantic schemas shared by the API layer and the agents. These define the
 disaster trigger all the way to the final situation report.
 """
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+class SafeBaseModel(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def clean_none_strings(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            cleaned = {}
+            for k, v in data.items():
+                if isinstance(v, str) and v.strip().lower() in ("none", "null", "n/a", ""):
+                    cleaned[k] = None
+                else:
+                    cleaned[k] = v
+            return cleaned
+        return data
+
 
 
 class DisasterTriggerRequest(BaseModel):
@@ -44,50 +59,51 @@ class PriorityItem(BaseModel):
     reason: str
 
 
-class ResourceAssignment(BaseModel):
+class ResourceAssignment(SafeBaseModel):
     resource_type: str
-    resource_id: str
+    resource_id: Optional[str] = None
     assigned_to: str
-    distance_km: float
-    eta_minutes: float
+    distance_km: Optional[float] = 0.0
+    eta_minutes: Optional[float] = 0.0
 
 
-class RouteInfo(BaseModel):
-    resource_id: str
+class RouteInfo(SafeBaseModel):
+    resource_id: Optional[str] = None
     destination: str
-    distance_km: float
+    distance_km: Optional[float] = 0.0
     status: str                # "clear" | "rerouted" | "delayed"
     note: str
 
 
-class HospitalAssignment(BaseModel):
+class HospitalAssignment(SafeBaseModel):
     hospital_name: str
-    patients_assigned: int
-    icu_beds_left: int
-    general_beds_left: int
+    patients_assigned: Optional[int] = 0
+    icu_beds_left: Optional[int] = 0
+    general_beds_left: Optional[int] = 0
     status: str
 
 
-class ShelterAssignment(BaseModel):
+class ShelterAssignment(SafeBaseModel):
     shelter_name: str
-    people_assigned: int
-    capacity_left: int
-    distance_km: float
+    people_assigned: Optional[int] = 0
+    capacity_left: Optional[int] = 0
+    distance_km: Optional[float] = 0.0
 
 
-class ReliefPlan(BaseModel):
+class ReliefPlan(SafeBaseModel):
     shelter_name: str
-    food_kits: int
-    water_liters: int
-    blankets: int
-    medical_kits: int
+    food_kits: Optional[int] = 0
+    water_liters: Optional[int] = 0
+    blankets: Optional[int] = 0
+    medical_kits: Optional[int] = 0
 
 
-class VolunteerAssignment(BaseModel):
+class VolunteerAssignment(SafeBaseModel):
     volunteer_name: str
     skill: str
     assigned_task: str
-    distance_km: float
+    distance_km: Optional[float] = 0.0
+
 
 
 class Alert(BaseModel):

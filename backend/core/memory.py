@@ -30,11 +30,16 @@ class MemoryInterface(ABC):
     def release_lock(self, lock_name: str) -> None:
         pass
 
+import threading
+
 class RedisMemoryManager(MemoryInterface):
     def __init__(self, use_fake: bool = False):
+        self.is_fake = use_fake or os.environ.get("USE_FAKE_REDIS", "false").lower() == "true"
         redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-        if use_fake or os.environ.get("USE_FAKE_REDIS", "false").lower() == "true":
+        if self.is_fake:
             self.client = fakeredis.FakeRedis()
+            self._locks = {}
+            self._locks_lock = threading.Lock()
         else:
             self.client = redis.Redis.from_url(redis_url)
             
@@ -52,10 +57,25 @@ class RedisMemoryManager(MemoryInterface):
         self.client.delete(key)
         
     def acquire_lock(self, lock_name: str, timeout: int = 10) -> bool:
-        return self.client.set(f"lock:{lock_name}", "locked", nx=True, ex=timeout) is not None
+        if self.is_fake:
+            with self._locks_lock:
+                if lock_name not in self._locks:
+                    self._locks[lock_name] = threading.Lock()
+            return self._locks[lock_name].acquire(timeout=timeout)
+        else:
+            return self.client.set(f"lock:{lock_name}", "locked", nx=True, ex=timeout) is not None
         
     def release_lock(self, lock_name: str) -> None:
-        self.client.delete(f"lock:{lock_name}")
+        if self.is_fake:
+            with self._locks_lock:
+                lock = self._locks.get(lock_name)
+            if lock:
+                try:
+                    lock.release()
+                except RuntimeError:
+                    pass
+        else:
+            self.client.delete(f"lock:{lock_name}")
 
 # Global Memory Manager
 memory_manager = RedisMemoryManager()
