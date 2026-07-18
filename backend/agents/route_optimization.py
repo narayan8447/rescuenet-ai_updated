@@ -36,7 +36,7 @@ class RouteOptimizationAgentV2:
         nearest = min(damage_reports, key=lambda d: haversine_km(poi.lat, poi.lon, d.lat, d.lon))
         return nearest.road_status
         
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=2, min=5, max=30))
     def plan_routes(self, assignments: List[ResourceAssignment], priorities: List[PriorityItem], damage_reports: List[DamageReport]) -> List[RouteInfo]:
         logger.info("route_optimization_started", num_assignments=len(assignments))
         logger.metric("agent_start", 1.0, tags={"agent": "route_optimization"})
@@ -106,6 +106,9 @@ class RouteOptimizationAgentV2:
             return final_routes
             
         except Exception as e:
+            if "429" in str(e):
+                logger.warning("rate_limit_hit_retrying", error=str(e))
+                raise e
             logger.error("route_optimization_failed_falling_back_to_legacy", error=str(e))
             return self._legacy_plan_routes(assignments, priorities, damage_reports)
             

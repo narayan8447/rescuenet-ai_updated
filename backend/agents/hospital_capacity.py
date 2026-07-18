@@ -31,7 +31,7 @@ class HospitalCapacityAgentV2:
     def __init__(self):
         self.llm = get_google_llm()
         
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=2, min=5, max=30))
     def assign_patients(self, damage_reports: List[DamageReport], hospitals: list) -> List[HospitalAssignment]:
         logger.info("hospital_capacity_started", num_reports=len(damage_reports), num_hospitals=len(hospitals))
         logger.metric("agent_start", 1.0, tags={"agent": "hospital_capacity"})
@@ -143,6 +143,9 @@ class HospitalCapacityAgentV2:
             return final_assignments
             
         except Exception as e:
+            if "429" in str(e):
+                logger.warning("rate_limit_hit_retrying", error=str(e))
+                raise e
             logger.error("hospital_capacity_failed_falling_back_to_legacy", error=str(e))
             return self._legacy_assign_patients(damage_reports, hospitals)
             

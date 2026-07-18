@@ -33,7 +33,7 @@ class ResourceAllocationAgentV2:
         # Use Google AI Studio (Gemini 1.5 Flash) for highly reliable JSON tool calling
         self.llm = get_google_llm()
         
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=2, min=5, max=30))
     def allocate(self, disaster_type: str, priorities: List[PriorityItem], resources: dict, top_n: int = 4) -> List[ResourceAssignment]:
         logger.info("resource_allocation_started", disaster_type=disaster_type, num_priorities=len(priorities))
         logger.metric("agent_start", 1.0, tags={"agent": "resource_allocation"})
@@ -102,6 +102,9 @@ class ResourceAllocationAgentV2:
             return assignments
             
         except Exception as e:
+            if "429" in str(e):
+                logger.warning("rate_limit_hit_retrying", error=str(e))
+                raise e
             logger.error("resource_allocation_failed_falling_back_to_legacy", error=str(e))
             return self._legacy_allocate(disaster_type, priorities, resources, top_n)
             

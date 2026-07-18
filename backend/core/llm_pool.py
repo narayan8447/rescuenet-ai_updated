@@ -50,9 +50,7 @@ def get_openrouter_llm(max_retries: int = 10) -> ChatOpenAI:
             "models": [
                 "google/gemma-4-31b-it:free",
                 "qwen/qwen3-next-80b-a3b-instruct:free",
-                "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
-                "nvidia/nemotron-3-super-120b-a12b:free",
-                "google/gemma-4-26b-a4b-it:free"
+                "cognitivecomputations/dolphin-mistral-24b-venice-edition:free"
             ]
         },
         default_headers={
