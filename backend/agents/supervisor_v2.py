@@ -22,19 +22,15 @@ def route_supervisor(state: GraphState) -> Union[str, List[str]]:
     if "resource_allocation" not in completed:
         return "resource_allocation"
     
-    # Parallel Fan-Out Block
-    parallel_targets = []
+    # Sequential execution block (avoid parallel fan-out to stay within Groq TPM limits)
     if "route_optimization" not in completed:
-        parallel_targets.append("route_optimization")
+        return "route_optimization"
     if "hospital_capacity" not in completed:
-        parallel_targets.append("hospital_capacity")
+        return "hospital_capacity"
     if "shelter_allocation" not in completed:
-        parallel_targets.append("shelter_allocation")
+        return "shelter_allocation"
     if "volunteer_coordination" not in completed:
-        parallel_targets.append("volunteer_coordination")
-    
-    if parallel_targets:
-        return parallel_targets
+        return "volunteer_coordination"
 
     # Check Reflection Loop via PlanCritic
     parallel_nodes = ["route_optimization", "hospital_capacity", "shelter_allocation", "volunteer_coordination"]

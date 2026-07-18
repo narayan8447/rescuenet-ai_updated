@@ -181,8 +181,8 @@ def normalize_query(query: str) -> str:
 
 class RAGEvaluator(BaseModel):
     """Schema for the LLM to decide if Qdrant context is sufficient."""
-    is_sufficient: bool = Field(description="True if the official context fully answers the user query.")
-    response: str = Field(description="The synthesized answer if sufficient, OR a targeted web search query if insufficient.")
+    is_sufficient: Optional[bool] = Field(default=False, description="True if the official context fully answers the user query.")
+    response: Optional[str] = Field(default="", description="The synthesized answer if sufficient, OR a targeted web search query if insufficient.")
 
 class RAGEngine:
     def __init__(self):

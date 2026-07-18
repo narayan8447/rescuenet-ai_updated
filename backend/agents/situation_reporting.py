@@ -6,7 +6,7 @@ Natively integrates the Agentic RAG engine to ground the report in official SOPs
 """
 
 import os
-from typing import List
+from typing import List, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
@@ -23,7 +23,7 @@ from backend.rag.models import RAGQuery
 
 class NarrativeSummary(BaseModel):
     """Wrapper to force LLM to output a single string."""
-    summary: str = Field(description="Markdown formatted executive summary of the disaster response.")
+    summary: Optional[str] = Field(default="No summary generated.", description="Markdown formatted executive summary of the disaster response.")
 
 class SituationReportingAgentV2:
     def __init__(self):
