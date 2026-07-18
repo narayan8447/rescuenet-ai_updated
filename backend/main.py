@@ -7,6 +7,9 @@ Run with:
 Exposes the multi-agent pipeline as a REST API for the Streamlit dashboard
 (or any other client / Postman / curl) to consume.
 """
+import sys
+sys.modules["ormsgpack"] = None
+
 import faulthandler
 faulthandler.enable()
 
