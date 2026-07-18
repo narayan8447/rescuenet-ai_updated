@@ -22,9 +22,9 @@ class EventDetectionAgentV2:
     def __init__(self):
         # Initialize Groq LLM. Expects GROQ_API_KEY in environment.
         self.llm = ChatGroq(
-            model="groq/compound-mini",
+            model="llama-3.1-8b-instant",
             api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
-            max_retries=2
+            max_retries=10
         )
         
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))

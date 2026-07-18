@@ -30,9 +30,9 @@ def check_volunteer_safety_status(volunteer_name: str) -> dict:
 class VolunteerCoordinationAgentV2:
     def __init__(self):
         self.llm = ChatGroq(
-            model="groq/compound-mini",
+            model="llama-3.1-8b-instant",
             api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
-            max_retries=2
+            max_retries=10
         )
         
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))

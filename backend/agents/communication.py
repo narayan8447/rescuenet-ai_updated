@@ -27,9 +27,9 @@ def dispatch_sms_gateway(message: str) -> dict:
 class CommunicationAgentV2:
     def __init__(self):
         self.llm = ChatGroq(
-            model="groq/compound-mini", # Using 70b for higher quality translations
+            model="llama-3.1-8b-instant", # Using 70b for higher quality translations
             api_key=os.environ.get("GROQ_API_KEY", "dummy_key"),
-            max_retries=2
+            max_retries=10
         )
         
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))

@@ -100,7 +100,7 @@ def build_supervisor_graph():
         import os
         from langchain_core.messages import SystemMessage, HumanMessage
         llm = ChatGroq(
-            model="groq/compound-mini",
+            model="llama-3.1-8b-instant",
             api_key=os.environ.get("GROQ_API_KEY", "dummy_key")
         )
         
