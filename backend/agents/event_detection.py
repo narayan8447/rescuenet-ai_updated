@@ -50,7 +50,7 @@ class EventDetectionAgentV2:
         prompt = ChatPromptTemplate.from_messages([
             ("system", "You are an expert emergency response dispatcher. Your job is to classify raw disaster reports into a structured DisasterEvent. Valid disaster types: flood, earthquake, cyclone, fire, landslide, building_collapse. Estimate a confidence score (0.0 to 1.0). Return the current UTC time as detected_at.\n\n"
                        "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
-                       '{"disaster_type": "string", "location_name": "string", "lat": number, "lon": number, "confidence": number, "detected_at": "ISO datetime string"}'),
+                       '{{"disaster_type": "string", "location_name": "string", "lat": number, "lon": number, "confidence": number, "detected_at": "ISO datetime string"}}'),
             ("human", "Raw Report Data: {report}")
         ])
         

@@ -104,9 +104,6 @@ class ResourceAllocationAgentV2:
             return assignments
             
         except Exception as e:
-            if "429" in str(e):
-                logger.warning("rate_limit_hit_retrying", error=str(e))
-                raise e
             logger.error("resource_allocation_failed_falling_back_to_legacy", error=str(e))
             return self._legacy_allocate(disaster_type, priorities, resources, top_n)
             

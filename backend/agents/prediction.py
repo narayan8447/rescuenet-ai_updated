@@ -25,7 +25,7 @@ from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 def fetch_weather_forecast(location: str) -> str:
     """Fetches the 24-hour weather forecast for a given location. Always use this before predicting."""
     logger.info("tool_execution", tool="fetch_weather_forecast", location=location)
-    return '{"wind_speed_kmh": 35, "precipitation_mm": 120, "condition": "worsening"}'
+    return '{{"wind_speed_kmh": 35, "precipitation_mm": 120, "condition": "worsening"}}'
 
 class PredictionAgentV2:
     def __init__(self):
@@ -49,7 +49,7 @@ class PredictionAgentV2:
         messages = [
             SystemMessage(content="You are a disaster modeling AI. Use tools to gather data, then predict severity at 6, 12, and 24 hours.\n\n"
                                   "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
-                                  '{"forecasts": [{"horizon_hours": number, "metric": "string", "predicted_value": number, "note": "string"}]}'),
+                                  '{{"forecasts": [{{"horizon_hours": number, "metric": "string", "predicted_value": number, "note": "string"}}]}}'),
             HumanMessage(content=f"Disaster: {event.disaster_type}. Location: {event.location_name}. Severity: {avg_severity}. Casualties: {total_casualties}.")
         ]
         

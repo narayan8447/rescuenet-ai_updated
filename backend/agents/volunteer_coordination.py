@@ -56,7 +56,7 @@ class VolunteerCoordinationAgentV2:
         prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a volunteer dispatch coordinator. Assign available civilian volunteers to the priority targets based on semantic skill matching. For example, 'hospital' needs 'medical', 'residential' needs 'engineer' or 'medical', 'warehouse' needs 'driver'. Prioritize closer volunteers to targets. A volunteer can only be assigned to one target. Provide a descriptive assigned_task.\n\n"
                        "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
-                       '{"assignments": [{"volunteer_id": "string", "volunteer_name": "string", "assigned_to": "string", "assigned_task": "string"}]}'),
+                       '{{"assignments": [{{"volunteer_id": "string", "volunteer_name": "string", "assigned_to": "string", "assigned_task": "string"}}]}}'),
             ("human", "Priority Targets: {targets}\nAvailable Volunteers: {volunteers}")
         ])
         

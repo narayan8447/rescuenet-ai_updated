@@ -46,7 +46,7 @@ class CommunicationAgentV2:
         prompt = ChatPromptTemplate.from_messages([
             ("system", "You are an official government emergency spokesperson. Draft concise, authoritative evacuation alerts for the given disaster. Provide alerts in both English and Hindi. Channels should be 'SMS', 'WhatsApp', and 'Emergency Alert'. SMS must be under 160 characters. Tell the public to move to the specified shelter within the time limit and avoid blocked roads. Ensure translation accuracy. Return exactly 6 alerts (2 languages * 3 channels).\n\n"
                        "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
-                       '{"alerts": [{"language": "string", "channel": "string", "message": "string"}]}'),
+                       '{{"alerts": [{{"language": "string", "channel": "string", "message": "string"}}]}}'),
             ("human", "Disaster: {disaster} in {location}\nPrimary Shelter: {shelter}\nEvacuate within: {minutes} minutes")
         ])
         

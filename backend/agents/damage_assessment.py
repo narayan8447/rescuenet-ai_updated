@@ -49,7 +49,7 @@ class DamageAssessmentAgentV2:
         prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a crisis topology analyst. Given a disaster event and topological data, segment the area into 3 to 5 distinct sub-zones. Estimate damage decay based on distance from the epicenter. Calculate a severity_score (0-100), casualties, and road/power status. Road status must be 'open', 'partially_blocked', or 'blocked'. Power status must be 'up' or 'down'.\n\n"
                        "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
-                       '{"reports": [{"area_id": "string", "lat": number, "lon": number, "buildings_damaged_pct": number, "road_status": "string", "power_status": "string", "estimated_casualties": number, "severity_score": number}]}'),
+                       '{{"reports": [{{"area_id": "string", "lat": number, "lon": number, "buildings_damaged_pct": number, "road_status": "string", "power_status": "string", "estimated_casualties": number, "severity_score": number}}]}}'),
             ("human", "Disaster Event: {event}\nTopological Context: {topology}")
         ])
         

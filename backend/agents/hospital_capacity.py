@@ -66,7 +66,7 @@ class HospitalCapacityAgentV2:
                        "3. You must output exactly one assignment object per hospital in your final assignments list.\n"
                        "4. Do not output multiple objects for the same hospital.\n"
                        "5. Do not invent or call any other tools or functions. You must only call the `HospitalAssignmentList` tool.\n"
-                       "6. You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema: {\"assignments\": [{\"hospital_name\": \"string\", \"patients_assigned\": number, \"icu_beds_left\": number, \"general_beds_left\": number, \"status\": \"string\"}]}"),
+                       "6. You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema: {{\"assignments\": [{{\"hospital_name\": \"string\", \"patients_assigned\": number, \"icu_beds_left\": number, \"general_beds_left\": number, \"status\": \"string\"}}]}}"),
             ("human", "Incoming Patients: {incoming}\nHospitals (Ordered by proximity): {hospitals}")
         ])
         
@@ -144,9 +144,6 @@ class HospitalCapacityAgentV2:
             return final_assignments
             
         except Exception as e:
-            if "429" in str(e):
-                logger.warning("rate_limit_hit_retrying", error=str(e))
-                raise e
             logger.error("hospital_capacity_failed_falling_back_to_legacy", error=str(e))
             return self._legacy_assign_patients(damage_reports, hospitals)
             

@@ -84,7 +84,7 @@ class SituationReportingAgentV2:
                        "Draft a cohesive, highly dense Markdown summary using clean bullet points. "
                        "You MUST explicitly call out casualty metrics and contrast internal logistics with the external guidelines/web context supplied.\n\n"
                        "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
-                       '{"summary": "string"}'),
+                       '{{"summary": "string"}}'),
             ("human", "Current State Data: {state}")
         ])
         

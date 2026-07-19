@@ -60,7 +60,7 @@ class ShelterAllocationAgentV2:
                        "Distribute them across the provided shelters, prioritizing the nearest (first in list). Do not exceed a shelter's capacity. "
                        "You must output exactly one assignment object per shelter. Do not create multiple assignment objects for the same shelter. "
                        "For each shelter, calculate the total people assigned to it and provide a single assignment object with that aggregated count."
-                       "\nYou MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema: {\"assignments\": [{\"shelter_name\": \"string\", \"people_assigned\": number, \"capacity_left\": number, \"distance_km\": number}]}"),
+                       "\nYou MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema: {{\"assignments\": [{{\"shelter_name\": \"string\", \"people_assigned\": number, \"capacity_left\": number, \"distance_km\": number}}]}}"),
             ("human", "Displaced Citizens: {displaced}\nShelters (Ordered by proximity): {shelters}")
         ])
         
@@ -118,9 +118,6 @@ class ShelterAllocationAgentV2:
             return final_assignments
             
         except Exception as e:
-            if "429" in str(e):
-                logger.warning("rate_limit_hit_retrying", error=str(e))
-                raise e
             logger.error("shelter_allocation_failed_falling_back_to_legacy", error=str(e))
             return self._legacy_assign_shelters(damage_reports, shelters)
             

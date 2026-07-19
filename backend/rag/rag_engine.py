@@ -360,7 +360,7 @@ class RAGEngine:
                        "If YES: Set 'is_sufficient' to true and provide a comprehensive markdown answer based ONLY on the context. "
                        "If NO (or context is empty/irrelevant): Set 'is_sufficient' to false and output a concise, optimized web search query in the 'response' field to find the missing information.\n\n"
                        "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
-                       '{"is_sufficient": boolean, "response": "string"}'),
+                       '{{"is_sufficient": boolean, "response": "string"}}'),
             ("human", "User Query: {query}\n\nOfficial Context:\n{context}")
         ])
         

@@ -48,7 +48,7 @@ class RescuePrioritizationAgentV2:
         prompt = ChatPromptTemplate.from_messages([
             ("system", "You are an expert search and rescue commander. Triaging multiple points of interest based on nearby damage severity, facility criticality (e.g., hospitals > schools > residential), and population weight. Score each from 0.0 to 100.0. Provide a short reason explaining the score incorporating distance to damage, facility type, and severity. Output must strictly match the schema.\n\n"
                        "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
-                       '{"priorities": [{"entity": "string", "entity_type": "string", "lat": number, "lon": number, "priority_score": number, "reason": "string"}]}'),
+                       '{{"priorities": [{{"entity": "string", "entity_type": "string", "lat": number, "lon": number, "priority_score": number, "reason": "string"}}]}}'),
             ("human", "Damage Reports: {reports}\nPoints of Interest: {pois}")
         ])
         

@@ -63,7 +63,7 @@ class RouteOptimizationAgentV2:
             })
             
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an emergency routing AI. For each resource assignment, determine the route status based on the destination's road_status. If road_status is 'blocked', set status='rerouted' and increase distance by ~40% (penalty=1.4). If 'partially_blocked', set status='delayed' and increase distance by ~15% (penalty=1.15). If 'open', status='clear' and penalty=1.0. Provide a descriptive note. Output a list matching the exact number of assignments.\n\nYou MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema: {\"routes\": [{\"resource_id\": \"string\", \"destination\": \"string\", \"distance_km\": number, \"status\": \"clear or delayed or rerouted\", \"note\": \"string\"}]}"),
+            ("system", "You are an emergency routing AI. For each resource assignment, determine the route status based on the destination's road_status. If road_status is 'blocked', set status='rerouted' and increase distance by ~40% (penalty=1.4). If 'partially_blocked', set status='delayed' and increase distance by ~15% (penalty=1.15). If 'open', status='clear' and penalty=1.0. Provide a descriptive note. Output a list matching the exact number of assignments.\n\nYou MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema: {{\"routes\": [{{\"resource_id\": \"string\", \"destination\": \"string\", \"distance_km\": number, \"status\": \"clear or delayed or rerouted\", \"note\": \"string\"}}]}}"),
             ("human", "Assignments and Road Context: {context}")
         ])
         
@@ -106,9 +106,6 @@ class RouteOptimizationAgentV2:
             return final_routes
             
         except Exception as e:
-            if "429" in str(e):
-                logger.warning("rate_limit_hit_retrying", error=str(e))
-                raise e
             logger.error("route_optimization_failed_falling_back_to_legacy", error=str(e))
             return self._legacy_plan_routes(assignments, priorities, damage_reports)
             
