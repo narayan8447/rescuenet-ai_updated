@@ -37,13 +37,13 @@ def parse_llm_json(response_content: str, schema_class):
     return schema_class(**data)
 
 
-def get_google_llm(max_retries: int = 10):
+def get_google_llm(max_retries: int = 1):
     """Fallback: Redirects Google LLM traffic to Groq to bypass Gemini quota limits."""
     # The user has a valid GROQ_API_KEY with higher rate limits (30 RPM).
     return get_groq_llm(max_retries)
 
 
-def get_groq_llm(max_retries: int = 10) -> ChatGroq:
+def get_groq_llm(max_retries: int = 1) -> ChatGroq:
     """Return a Groq-backed LLM (llama-3.1-8b-instant)."""
     return ChatGroq(
         model="llama-3.1-8b-instant",
@@ -52,7 +52,7 @@ def get_groq_llm(max_retries: int = 10) -> ChatGroq:
     )
 
 
-def get_openrouter_llm(max_retries: int = 10):
+def get_openrouter_llm(max_retries: int = 1):
     """Fallback: Redirects OpenRouter LLM traffic to Groq to bypass upstream rate limits."""
     # OpenRouter's free models are throwing 429 upstream errors. 
     # The user has a valid GROQ_API_KEY with reliable limits.
