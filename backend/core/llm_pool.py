@@ -52,28 +52,8 @@ def get_groq_llm(max_retries: int = 10) -> ChatGroq:
     )
 
 
-def get_openrouter_llm(max_retries: int = 10) -> ChatOpenAI:
-    """Return an OpenRouter-backed LLM (google/gemma-2-9b-it:free).
-    
-    OpenRouter exposes an OpenAI-compatible API, so we use ChatOpenAI
-    with a custom base_url.  The model has tool-calling support and
-    a generous free-tier rate limit.
-    """
-    api_key = os.environ.get("OPENROUTER_API_KEY", "dummy_key")
-    return ChatOpenAI(
-        model="google/gemma-4-31b-it:free",
-        api_key=api_key,
-        base_url="https://openrouter.ai/api/v1",
-        max_retries=max_retries,
-        extra_body={
-            "models": [
-                "google/gemma-4-31b-it:free",
-                "qwen/qwen3-next-80b-a3b-instruct:free",
-                "cognitivecomputations/dolphin-mistral-24b-venice-edition:free"
-            ]
-        },
-        default_headers={
-            "HTTP-Referer": "https://rescuenet-ai.onrender.com",
-            "X-Title": "RescueNet AI",
-        },
-    )
+def get_openrouter_llm(max_retries: int = 10):
+    """Fallback: Redirects OpenRouter LLM traffic to Groq to bypass upstream rate limits."""
+    # OpenRouter's free models are throwing 429 upstream errors. 
+    # The user has a valid GROQ_API_KEY with reliable limits.
+    return get_groq_llm(max_retries)

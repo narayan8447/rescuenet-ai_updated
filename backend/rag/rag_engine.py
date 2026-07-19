@@ -158,7 +158,7 @@ def get_qdrant():
                 logger.error("qdrant_init_failed", error=str(e))
                 _qdrant_client = None
         else:
-            logger.info("QDRANT_URL not set; running in pure-Python BM25 mode.")
+            logger.info("QDRANT_URL not set; skipping Qdrant client.")
             _qdrant_client = None
             
     return _qdrant_client
