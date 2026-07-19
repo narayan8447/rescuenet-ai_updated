@@ -21,16 +21,9 @@ def run_pipeline(req: DisasterTriggerRequest, state: dict) -> SituationReport:
     
     # Using a generated thread_id for the checkpoint memory
     thread_id = str(uuid.uuid4())
-    config = {"configurable": {"thread_id": thread_id}}
+    # Limit max_concurrency to 3 to prevent OOM on Render by running fewer agents at exactly the same time.
+    config = {"configurable": {"thread_id": thread_id}, "max_concurrency": 3}
     
-    # Inject Langfuse CallbackHandler if available
-    try:
-        from langfuse.callback import CallbackHandler
-        langfuse_handler = CallbackHandler()
-        config["callbacks"] = [langfuse_handler]
-    except Exception as e:
-        print(f"Observability warning: {e}")
-        
     # Run until the first interruption or completion
     final_state = supervisor_graph.invoke(initial_state, config)
     

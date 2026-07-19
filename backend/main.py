@@ -86,12 +86,7 @@ def root():
 from backend.rag.api import router as rag_router
 app.include_router(rag_router)
 
-# OpenTelemetry Instrumentation
-try:
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-    FastAPIInstrumentor.instrument_app(app)
-except ImportError:
-    pass
+# OpenTelemetry Instrumentation removed to save RAM on Render
 
 from backend.agents.supervisor_v2 import supervisor_graph
 from backend.models.schemas import AgentTrace
