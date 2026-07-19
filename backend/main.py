@@ -59,8 +59,15 @@ def startup():
         FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
     else:
         redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-        redis_client = aioredis.from_url(redis_url)
-        FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
+        try:
+            import redis
+            sync_client = redis.Redis.from_url(redis_url)
+            sync_client.ping()
+            redis_client = aioredis.from_url(redis_url)
+            FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
+        except Exception:
+            print("Redis not available for caching on localhost, falling back to InMemoryBackend")
+            FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
     
     # Auto-ingest RAG data for zero-dependency deployments
     if not os.environ.get("QDRANT_URL") and not os.path.exists("qdrant_data"):

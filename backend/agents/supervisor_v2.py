@@ -136,7 +136,13 @@ def build_supervisor_graph():
         memory = MemorySaver()
     else:
         from backend.core.memory import RedisSaver, memory_manager
-        memory = RedisSaver(memory_manager.client)
+        try:
+            memory_manager.client.ping()
+            memory = RedisSaver(memory_manager.client)
+        except Exception:
+            print("Redis not available on localhost, falling back to MemorySaver")
+            from langgraph.checkpoint.memory import MemorySaver
+            memory = MemorySaver()
 
     # Compile the graph with interrupts
     return builder.compile(
