@@ -1,5 +1,8 @@
 import pytest
 import uuid
+import os
+os.environ["USE_FAKE_REDIS"] = "true"
+
 from backend.core.state import GraphState
 from backend.agents.supervisor_v2 import supervisor_graph
 
