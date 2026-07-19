@@ -275,8 +275,6 @@ with tab_state:
             for rtype, items in state["resources"].items():
                 st.caption(rtype.replace("_", " ").title())
                 st.dataframe(pd.DataFrame(items), use_container_width=True, hide_index=True)
-    except requests.exceptions.ConnectionError:
-        st.error("Backend not reachable.")
 
 # ------------------------------------------------------------- RAG tab-
 with tab_rag:
