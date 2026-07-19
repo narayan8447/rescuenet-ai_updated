@@ -18,6 +18,7 @@ secure>=0.3.0
 gunicorn>=21.2.0
 pytest-cov>=4.1.0
 fastapi-cache2>=0.2.1
+jinja2>=3.1.2
 duckduckgo-search>=5.0.0
 langchain-community>=0.3.16
 langchain-google-genai>=2.0.9
