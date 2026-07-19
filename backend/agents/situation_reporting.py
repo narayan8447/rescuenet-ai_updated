@@ -8,7 +8,7 @@ Natively integrates the Agentic RAG engine to ground the report in official SOPs
 import os
 from typing import List, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_openrouter_llm
+from backend.core.llm_pool import get_openrouter_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
@@ -82,15 +82,17 @@ class SituationReportingAgentV2:
             ("system", "You are the Chief of Operations drafting an Executive Situation Report. "
                        "Synthesize the internal emergency metrics alongside the provided 'RAG and Web Intelligence' notes. "
                        "Draft a cohesive, highly dense Markdown summary using clean bullet points. "
-                       "You MUST explicitly call out casualty metrics and contrast internal logistics with the external guidelines/web context supplied."),
+                       "You MUST explicitly call out casualty metrics and contrast internal logistics with the external guidelines/web context supplied.\n\n"
+                       "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
+                       '{"summary": "string"}'),
             ("human", "Current State Data: {state}")
         ])
         
-        structured_llm = self.llm.with_structured_output(NarrativeSummary)
-        chain = prompt | structured_llm
+        chain = prompt | self.llm
         
         try:
-            result: NarrativeSummary = chain.invoke({"state": context_data})
+            response = chain.invoke({"state": context_data})
+            result = parse_llm_json(response.content, NarrativeSummary)
             summary = result.summary
             
             logger.info("situation_reporting_success", length=len(summary))

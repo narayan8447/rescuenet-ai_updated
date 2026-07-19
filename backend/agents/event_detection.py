@@ -7,7 +7,7 @@ Uses Groq for fast inference, structured output, and Tenacity for retries.
 import os
 from datetime import datetime, timezone
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_groq_llm
+from backend.core.llm_pool import get_groq_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from backend.models.schemas import DisasterTriggerRequest, DisasterEvent
 from backend.core.logging import logger
@@ -48,16 +48,17 @@ class EventDetectionAgentV2:
             req.lon = coords["lon"]
 
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an expert emergency response dispatcher. Your job is to classify raw disaster reports into a structured DisasterEvent. Valid disaster types: flood, earthquake, cyclone, fire, landslide, building_collapse. Estimate a confidence score (0.0 to 1.0). Return the current UTC time as detected_at."),
+            ("system", "You are an expert emergency response dispatcher. Your job is to classify raw disaster reports into a structured DisasterEvent. Valid disaster types: flood, earthquake, cyclone, fire, landslide, building_collapse. Estimate a confidence score (0.0 to 1.0). Return the current UTC time as detected_at.\n\n"
+                       "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
+                       '{"disaster_type": "string", "location_name": "string", "lat": number, "lon": number, "confidence": number, "detected_at": "ISO datetime string"}'),
             ("human", "Raw Report Data: {report}")
         ])
         
-        # Enforce structured output matching our Pydantic schema
-        structured_llm = self.llm.with_structured_output(DisasterEvent)
-        chain = prompt | structured_llm
+        chain = prompt | self.llm
         
         try:
-            result: DisasterEvent = chain.invoke({"report": req.model_dump_json()})
+            response = chain.invoke({"report": req.model_dump_json()})
+            result = parse_llm_json(response.content, DisasterEvent)
             logger.info("event_detection_success", confidence=result.confidence)
             logger.metric("event_detection_confidence", result.confidence, tags={"agent": "event_detection"})
             return result

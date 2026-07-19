@@ -7,7 +7,7 @@ Uses Groq for fast inference, structured output, and Tenacity for retries.
 import os
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_groq_llm
+from backend.core.llm_pool import get_groq_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import DisasterEvent, DamageReport
@@ -47,19 +47,20 @@ class DamageAssessmentAgentV2:
         topology = query_osm_overpass(event.lat, event.lon, 6.0)
 
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a crisis topology analyst. Given a disaster event and topological data, segment the area into 3 to 5 distinct sub-zones. Estimate damage decay based on distance from the epicenter. Calculate a severity_score (0-100), casualties, and road/power status. Road status must be 'open', 'partially_blocked', or 'blocked'. Power status must be 'up' or 'down'."),
+            ("system", "You are a crisis topology analyst. Given a disaster event and topological data, segment the area into 3 to 5 distinct sub-zones. Estimate damage decay based on distance from the epicenter. Calculate a severity_score (0-100), casualties, and road/power status. Road status must be 'open', 'partially_blocked', or 'blocked'. Power status must be 'up' or 'down'.\n\n"
+                       "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
+                       '{"reports": [{"area_id": "string", "lat": number, "lon": number, "buildings_damaged_pct": number, "road_status": "string", "power_status": "string", "estimated_casualties": number, "severity_score": number}]}'),
             ("human", "Disaster Event: {event}\nTopological Context: {topology}")
         ])
         
-        # Enforce structured output matching our Pydantic schema wrapper
-        structured_llm = self.llm.with_structured_output(DamageReportList)
-        chain = prompt | structured_llm
+        chain = prompt | self.llm
         
         try:
-            result: DamageReportList = chain.invoke({
+            response = chain.invoke({
                 "event": event.model_dump_json(),
                 "topology": str(topology)
             })
+            result = parse_llm_json(response.content, DamageReportList)
             
             # Additional validation bounds logic
             for report in result.reports:

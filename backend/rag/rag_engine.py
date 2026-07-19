@@ -20,7 +20,7 @@ try:
 except ImportError:
     HAS_LOCAL_MODELS = False
 
-from backend.core.llm_pool import get_openrouter_llm
+from backend.core.llm_pool import get_openrouter_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.tools import DuckDuckGoSearchRun
 from pydantic import BaseModel, Field
@@ -358,17 +358,20 @@ class RAGEngine:
             ("system", "You are an Agentic RAG router for a disaster response system. "
                        "Evaluate if the provided 'Official Context' is sufficient to accurately answer the user's query. "
                        "If YES: Set 'is_sufficient' to true and provide a comprehensive markdown answer based ONLY on the context. "
-                       "If NO (or context is empty/irrelevant): Set 'is_sufficient' to false and output a concise, optimized web search query in the 'response' field to find the missing information."),
+                       "If NO (or context is empty/irrelevant): Set 'is_sufficient' to false and output a concise, optimized web search query in the 'response' field to find the missing information.\n\n"
+                       "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
+                       '{"is_sufficient": boolean, "response": "string"}'),
             ("human", "User Query: {query}\n\nOfficial Context:\n{context}")
         ])
         
-        evaluator_chain = route_prompt | llm.with_structured_output(RAGEvaluator)
+        evaluator_chain = route_prompt | llm
         
         try:
-            decision: RAGEvaluator = evaluator_chain.invoke({
+            response = evaluator_chain.invoke({
                 "query": query_obj.query,
                 "context": compiled_context
             })
+            decision = parse_llm_json(response.content, RAGEvaluator)
             
             if decision.is_sufficient:
                 # Qdrant successfully answered the query

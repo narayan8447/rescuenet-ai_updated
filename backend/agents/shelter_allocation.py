@@ -8,7 +8,7 @@ import os
 import time
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_google_llm
+from backend.core.llm_pool import get_google_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import DamageReport, ShelterAssignment
@@ -59,18 +59,19 @@ class ShelterAllocationAgentV2:
             ("system", "You are an AI civilian logistics coordinator. We have {displaced} displaced citizens needing shelter. "
                        "Distribute them across the provided shelters, prioritizing the nearest (first in list). Do not exceed a shelter's capacity. "
                        "You must output exactly one assignment object per shelter. Do not create multiple assignment objects for the same shelter. "
-                       "For each shelter, calculate the total people assigned to it and provide a single assignment object with that aggregated count."),
+                       "For each shelter, calculate the total people assigned to it and provide a single assignment object with that aggregated count."
+                       "\nYou MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema: {\"assignments\": [{\"shelter_name\": \"string\", \"people_assigned\": number, \"capacity_left\": number, \"distance_km\": number}]}"),
             ("human", "Displaced Citizens: {displaced}\nShelters (Ordered by proximity): {shelters}")
         ])
         
-        structured_llm = self.llm.with_structured_output(ShelterAssignmentList)
-        chain = prompt | structured_llm
+        chain = prompt | self.llm
         
         try:
-            result: ShelterAssignmentList = chain.invoke({
+            response = chain.invoke({
                 "displaced": displaced_estimate,
                 "shelters": ranked_shelters
             })
+            result = parse_llm_json(response.content, ShelterAssignmentList)
             
             assignments = result.assignments
             

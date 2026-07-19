@@ -9,7 +9,7 @@ import os
 import time
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_openrouter_llm
+from backend.core.llm_pool import get_openrouter_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import PriorityItem, VolunteerAssignment
@@ -54,18 +54,20 @@ class VolunteerCoordinationAgentV2:
         targets_json = [t.model_dump() for t in targets]
         
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a volunteer dispatch coordinator. Assign available civilian volunteers to the priority targets based on semantic skill matching. For example, 'hospital' needs 'medical', 'residential' needs 'engineer' or 'medical', 'warehouse' needs 'driver'. Prioritize closer volunteers to targets. A volunteer can only be assigned to one target. Provide a descriptive assigned_task."),
+            ("system", "You are a volunteer dispatch coordinator. Assign available civilian volunteers to the priority targets based on semantic skill matching. For example, 'hospital' needs 'medical', 'residential' needs 'engineer' or 'medical', 'warehouse' needs 'driver'. Prioritize closer volunteers to targets. A volunteer can only be assigned to one target. Provide a descriptive assigned_task.\n\n"
+                       "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
+                       '{"assignments": [{"volunteer_id": "string", "volunteer_name": "string", "assigned_to": "string", "assigned_task": "string"}]}'),
             ("human", "Priority Targets: {targets}\nAvailable Volunteers: {volunteers}")
         ])
         
-        structured_llm = self.llm.with_structured_output(VolunteerAssignmentList)
-        chain = prompt | structured_llm
+        chain = prompt | self.llm
         
         try:
-            result: VolunteerAssignmentList = chain.invoke({
+            response = chain.invoke({
                 "targets": targets_json,
                 "volunteers": available_vols
             })
+            result = parse_llm_json(response.content, VolunteerAssignmentList)
             
             assignments = result.assignments
             

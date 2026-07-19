@@ -8,7 +8,7 @@ simulated tools (like weather) to make grounded predictions.
 import os
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_groq_llm
+from backend.core.llm_pool import get_groq_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import DisasterEvent, DamageReport, Forecast
@@ -47,7 +47,9 @@ class PredictionAgentV2:
         total_casualties = sum(d.estimated_casualties for d in damage_reports)
         
         messages = [
-            SystemMessage(content="You are a disaster modeling AI. Use tools to gather data, then predict severity at 6, 12, and 24 hours."),
+            SystemMessage(content="You are a disaster modeling AI. Use tools to gather data, then predict severity at 6, 12, and 24 hours.\n\n"
+                                  "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
+                                  '{"forecasts": [{"horizon_hours": number, "metric": "string", "predicted_value": number, "note": "string"}]}'),
             HumanMessage(content=f"Disaster: {event.disaster_type}. Location: {event.location_name}. Severity: {avg_severity}. Casualties: {total_casualties}.")
         ]
         
@@ -63,10 +65,10 @@ class PredictionAgentV2:
                     tool_res = fetch_weather_forecast.invoke(tool_call["args"])
                     messages.append(ToolMessage(content=tool_res, tool_call_id=tool_call["id"]))
                     
-        # Step 3: Force structured output based on the full conversation history
-        structured_llm = self.llm.with_structured_output(ForecastList)
+        # Step 3: Get response and parse JSON
         try:
-            result = structured_llm.invoke(messages)
+            response = self.llm.invoke(messages)
+            result = parse_llm_json(response.content, ForecastList)
             forecasts = result.forecasts
             
             logger.info("prediction_success", num_forecasts=len(forecasts))

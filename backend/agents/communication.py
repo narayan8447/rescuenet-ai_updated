@@ -8,7 +8,7 @@ Uses Groq LLM for tone formatting and translation.
 import os
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_openrouter_llm
+from backend.core.llm_pool import get_openrouter_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import DisasterEvent, ShelterAssignment, Alert
@@ -44,20 +44,22 @@ class CommunicationAgentV2:
         minutes = 45 # Simulated evacuation window
         
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an official government emergency spokesperson. Draft concise, authoritative evacuation alerts for the given disaster. Provide alerts in both English and Hindi. Channels should be 'SMS', 'WhatsApp', and 'Emergency Alert'. SMS must be under 160 characters. Tell the public to move to the specified shelter within the time limit and avoid blocked roads. Ensure translation accuracy. Return exactly 6 alerts (2 languages * 3 channels)."),
+            ("system", "You are an official government emergency spokesperson. Draft concise, authoritative evacuation alerts for the given disaster. Provide alerts in both English and Hindi. Channels should be 'SMS', 'WhatsApp', and 'Emergency Alert'. SMS must be under 160 characters. Tell the public to move to the specified shelter within the time limit and avoid blocked roads. Ensure translation accuracy. Return exactly 6 alerts (2 languages * 3 channels).\n\n"
+                       "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
+                       '{"alerts": [{"language": "string", "channel": "string", "message": "string"}]}'),
             ("human", "Disaster: {disaster} in {location}\nPrimary Shelter: {shelter}\nEvacuate within: {minutes} minutes")
         ])
         
-        structured_llm = self.llm.with_structured_output(AlertList)
-        chain = prompt | structured_llm
+        chain = prompt | self.llm
         
         try:
-            result: AlertList = chain.invoke({
+            response = chain.invoke({
                 "disaster": event.disaster_type.replace("_", " ").title(),
                 "location": event.location_name,
                 "shelter": primary_shelter,
                 "minutes": minutes
             })
+            result = parse_llm_json(response.content, AlertList)
             
             alerts = result.alerts
             

@@ -8,7 +8,7 @@ import os
 import time
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_google_llm
+from backend.core.llm_pool import get_google_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import PriorityItem, ResourceAssignment
@@ -58,19 +58,21 @@ class ResourceAllocationAgentV2:
         }
         
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an AI logistics dispatcher. Given a disaster type, a list of priority targets, and available fleet resources, map the most appropriate resource types to the targets. A flood needs boats/ambulances, an earthquake needs fire_trucks/ambulances/helicopters. Assign the nearest resource of the required type to each priority. Output a JSON list of ResourceAssignments."),
+            ("system", "You are an AI logistics dispatcher. Given a disaster type, a list of priority targets, and available fleet resources, map the most appropriate resource types to the targets. A flood needs boats/ambulances, an earthquake needs fire_trucks/ambulances/helicopters. Assign the nearest resource of the required type to each priority.\n\n"
+                       "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
+                       '{{"assignments": [{{"resource_type": "string", "resource_id": "string", "assigned_to": "string", "distance_km": number, "eta_minutes": number}}]}}'),
             ("human", "Disaster: {disaster}\nTargets: {targets}\nAvailable Fleet: {fleet}")
         ])
         
-        structured_llm = self.llm.with_structured_output(ResourceAssignmentList)
-        chain = prompt | structured_llm
+        chain = prompt | self.llm
         
         try:
-            result: ResourceAssignmentList = chain.invoke({
+            response = chain.invoke({
                 "disaster": disaster_type,
                 "targets": targets_json,
                 "fleet": available_resources
             })
+            result = parse_llm_json(response.content, ResourceAssignmentList)
             
             assignments = result.assignments
             

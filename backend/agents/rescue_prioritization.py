@@ -8,7 +8,7 @@ Uses Groq LLM for intelligent triaging and reasoning.
 import os
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_groq_llm
+from backend.core.llm_pool import get_groq_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import DamageReport, PriorityItem
@@ -46,19 +46,21 @@ class RescuePrioritizationAgentV2:
         fetch_infrastructure_vulnerability(points_of_interest[0].get("name", "Unknown"))
         
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an expert search and rescue commander. Triaging multiple points of interest based on nearby damage severity, facility criticality (e.g., hospitals > schools > residential), and population weight. Score each from 0.0 to 100.0. Provide a short reason explaining the score incorporating distance to damage, facility type, and severity. Output must strictly match the schema."),
+            ("system", "You are an expert search and rescue commander. Triaging multiple points of interest based on nearby damage severity, facility criticality (e.g., hospitals > schools > residential), and population weight. Score each from 0.0 to 100.0. Provide a short reason explaining the score incorporating distance to damage, facility type, and severity. Output must strictly match the schema.\n\n"
+                       "You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema:\n"
+                       '{"priorities": [{"entity": "string", "entity_type": "string", "lat": number, "lon": number, "priority_score": number, "reason": "string"}]}'),
             ("human", "Damage Reports: {reports}\nPoints of Interest: {pois}")
         ])
         
-        structured_llm = self.llm.with_structured_output(PriorityItemList)
-        chain = prompt | structured_llm
+        chain = prompt | self.llm
         
         try:
             reports_json = [r.model_dump() for r in damage_reports]
-            result: PriorityItemList = chain.invoke({
+            response = chain.invoke({
                 "reports": reports_json,
                 "pois": points_of_interest
             })
+            result = parse_llm_json(response.content, PriorityItemList)
             
             # Post-process: Sort and validate bounds
             items = result.priorities

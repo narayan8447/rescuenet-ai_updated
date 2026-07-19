@@ -9,7 +9,7 @@ import os
 import time
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_google_llm
+from backend.core.llm_pool import get_google_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import DamageReport, HospitalAssignment
@@ -65,18 +65,19 @@ class HospitalCapacityAgentV2:
                        "2. For each hospital, assign patients up to its total capacity (general beds + ICU beds).\n"
                        "3. You must output exactly one assignment object per hospital in your final assignments list.\n"
                        "4. Do not output multiple objects for the same hospital.\n"
-                       "5. Do not invent or call any other tools or functions. You must only call the `HospitalAssignmentList` tool."),
+                       "5. Do not invent or call any other tools or functions. You must only call the `HospitalAssignmentList` tool.\n"
+                       "6. You MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema: {\"assignments\": [{\"hospital_name\": \"string\", \"patients_assigned\": number, \"icu_beds_left\": number, \"general_beds_left\": number, \"status\": \"string\"}]}"),
             ("human", "Incoming Patients: {incoming}\nHospitals (Ordered by proximity): {hospitals}")
         ])
         
-        structured_llm = self.llm.with_structured_output(HospitalAssignmentList)
-        chain = prompt | structured_llm
+        chain = prompt | self.llm
         
         try:
-            result: HospitalAssignmentList = chain.invoke({
+            response = chain.invoke({
                 "incoming": incoming_patients,
                 "hospitals": ranked_hospitals
             })
+            result = parse_llm_json(response.content, HospitalAssignmentList)
             
             assignments = result.assignments
             

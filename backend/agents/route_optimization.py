@@ -8,7 +8,7 @@ Uses Groq LLM for routing strategy and dynamic hazard avoidance.
 import os
 from typing import List
 from tenacity import retry, stop_after_attempt, wait_exponential
-from backend.core.llm_pool import get_google_llm
+from backend.core.llm_pool import get_google_llm, parse_llm_json
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from backend.models.schemas import ResourceAssignment, DamageReport, RouteInfo, PriorityItem
@@ -63,15 +63,15 @@ class RouteOptimizationAgentV2:
             })
             
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an emergency routing AI. For each resource assignment, determine the route status based on the destination's road_status. If road_status is 'blocked', set status='rerouted' and increase distance by ~40% (penalty=1.4). If 'partially_blocked', set status='delayed' and increase distance by ~15% (penalty=1.15). If 'open', status='clear' and penalty=1.0. Provide a descriptive note. Output a list matching the exact number of assignments."),
+            ("system", "You are an emergency routing AI. For each resource assignment, determine the route status based on the destination's road_status. If road_status is 'blocked', set status='rerouted' and increase distance by ~40% (penalty=1.4). If 'partially_blocked', set status='delayed' and increase distance by ~15% (penalty=1.15). If 'open', status='clear' and penalty=1.0. Provide a descriptive note. Output a list matching the exact number of assignments.\n\nYou MUST respond with ONLY a valid JSON object (no markdown, no explanation, no function calls). Use this exact schema: {\"routes\": [{\"resource_id\": \"string\", \"destination\": \"string\", \"distance_km\": number, \"status\": \"clear or delayed or rerouted\", \"note\": \"string\"}]}"),
             ("human", "Assignments and Road Context: {context}")
         ])
         
-        structured_llm = self.llm.with_structured_output(RouteInfoList)
-        chain = prompt | structured_llm
+        chain = prompt | self.llm
         
         try:
-            result: RouteInfoList = chain.invoke({"context": assignment_context})
+            response = chain.invoke({"context": assignment_context})
+            result = parse_llm_json(response.content, RouteInfoList)
             
             # Post-Process: Validate and align the outputs with original assignments to prevent hallucinated IDs
             final_routes = []
