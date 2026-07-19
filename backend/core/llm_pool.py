@@ -37,13 +37,10 @@ def parse_llm_json(response_content: str, schema_class):
     return schema_class(**data)
 
 
-def get_google_llm(max_retries: int = 10) -> ChatGoogleGenerativeAI:
-    """Return a Google-backed LLM (gemini-2.5-flash)."""
-    return ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        api_key=os.environ.get("GOOGLE_API_KEY", "dummy_key"),
-        max_retries=max_retries,
-    )
+def get_google_llm(max_retries: int = 10):
+    """Fallback: Redirects Google LLM traffic to Groq to bypass Gemini quota limits."""
+    # The user has a valid GROQ_API_KEY with higher rate limits (30 RPM).
+    return get_groq_llm(max_retries)
 
 
 def get_groq_llm(max_retries: int = 10) -> ChatGroq:
