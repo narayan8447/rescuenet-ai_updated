@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://via.placeholder.com/150x150.png?text=RescueNet+Logo" alt="RescueNet AI Logo" width="150"/>
+  <img src="docs/logo.png" alt="RescueNet AI Logo" width="150"/>
   <h1>RescueNet AI</h1>
   <p><em>Autonomous Multi-Agent Command Center for Disaster Orchestration</em></p>
 
