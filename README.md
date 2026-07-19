@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://via.placeholder.com/150x150.png?text=RescueNet+Logo" alt="RescueNet AI Logo" width="150"/>
+  <img src="docs/logo.png" alt="RescueNet AI Logo" width="150"/>
   <h1>RescueNet AI</h1>
   <p><em>Autonomous Multi-Agent Command Center for Disaster Orchestration</em></p>
 
@@ -12,6 +12,13 @@
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 </div>
+
+---
+
+## 🚀 Live Demo
+
+- **Frontend Dashboard**: [https://rescuenet-frontend-yq8j.onrender.com](https://rescuenet-frontend-yq8j.onrender.com)
+- **Backend API**: [https://rescuenet-backend-v9b1.onrender.com](https://rescuenet-backend-v9b1.onrender.com)
 
 ---
 
@@ -255,7 +262,7 @@ For local un-containerized setup, refer to [docs/DEPLOYMENT.md](docs/DEPLOYMENT.
 
 | Live Dashboard | Interactive 3D PyDeck Map |
 |:---:|:---:|
-| ![Dashboard](https://via.placeholder.com/600x350.png?text=RescueNet+Dashboard) | ![Map](https://via.placeholder.com/600x350.png?text=Interactive+Map) |
+| ![Dashboard](docs/resource_dashboard.png) | ![Map](docs/disaster_heatmap.png) |
 | **Agent Timeline Execution** | **Conversational RAG UI** |
 | ![Timeline](https://via.placeholder.com/600x350.png?text=LangGraph+Timeline) | ![RAG](https://via.placeholder.com/600x350.png?text=RAG+Chat) |
 
