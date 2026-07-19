@@ -228,18 +228,25 @@ with tab_live:
 with tab_history:
     st.markdown("### Past Incidents")
     try:
-        incidents = requests.get(f"{API_BASE}/api/incidents", timeout=120).json()
-    except requests.exceptions.ConnectionError:
+        resp = requests.get(f"{API_BASE}/api/incidents", timeout=120)
+        resp.raise_for_status()
+        incidents = resp.json()
+    except Exception as e:
         incidents = None
-        st.error("Backend not reachable.")
+        st.warning("Backend is waking up or temporarily unreachable. Please wait a moment and refresh.")
 
     if incidents:
         df = pd.DataFrame(incidents)
         st.dataframe(df, use_container_width=True, hide_index=True)
         chosen = st.selectbox("View full report for incident #", df["id"].tolist())
         if st.button("Load report"):
-            detail = requests.get(f"{API_BASE}/api/incidents/{chosen}", timeout=120).json()
-            st.json(detail["report"])
+            try:
+                detail_resp = requests.get(f"{API_BASE}/api/incidents/{chosen}", timeout=120)
+                detail_resp.raise_for_status()
+                detail = detail_resp.json()
+                st.json(detail["report"])
+            except Exception:
+                st.error("Could not load report.")
     elif incidents == []:
         st.info("No incidents triggered yet.")
 
@@ -247,7 +254,14 @@ with tab_history:
 with tab_state:
     st.markdown("### Live Resource / Facility State")
     try:
-        state = requests.get(f"{API_BASE}/api/state", timeout=120).json()
+        state_resp = requests.get(f"{API_BASE}/api/state", timeout=120)
+        state_resp.raise_for_status()
+        state = state_resp.json()
+    except Exception:
+        state = None
+        st.warning("Live state not available while backend is booting.")
+    
+    if state:
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("**Hospitals**")
