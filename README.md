@@ -258,18 +258,6 @@ For local un-containerized setup, refer to [docs/DEPLOYMENT.md](docs/DEPLOYMENT.
 
 ---
 
-## Screenshots
-
-| Live Dashboard | Interactive 3D PyDeck Map |
-|:---:|:---:|
-| ![Dashboard](docs/resource_dashboard.png) | ![Map](docs/disaster_heatmap.png) |
-| **Agent Timeline Execution** | **Conversational RAG UI** |
-| ![Timeline](https://via.placeholder.com/600x350.png?text=LangGraph+Timeline) | ![RAG](https://via.placeholder.com/600x350.png?text=RAG+Chat) |
-
-*(Note: Replace placeholders with actual application screenshots before production release).*
-
----
-
 ## Documentation Index
 
 Explore the complete documentation in the `/docs` directory:
